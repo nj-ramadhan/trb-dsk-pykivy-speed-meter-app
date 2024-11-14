@@ -112,7 +112,7 @@ class ScreenLogin(MDScreen):
 
     def exec_login(self):
         global mydb, db_users
-        global dt_load_user, dt_user
+        global dt_speed_user, dt_user
 
         try:
             input_username = self.ids.tx_username.text
@@ -133,7 +133,7 @@ class ScreenLogin(MDScreen):
             else:
                 toast_msg = f'Berhasil Masuk, Selamat Datang {myresult[1]}'
                 toast(toast_msg)
-                dt_load_user = myresult[0]
+                dt_speed_user = myresult[0]
                 dt_user = myresult[1]
                 self.ids.tx_username.text = ""
                 self.ids.tx_password.text = "" 
