@@ -464,7 +464,7 @@ class ScreenSpeed(MDScreen):
 class RootScreen(ScreenManager):
     pass             
 
-class LoadBrakeSpeedMeterApp(MDApp):
+class SpeedMeterApp(MDApp):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -493,4 +493,4 @@ class LoadBrakeSpeedMeterApp(MDApp):
         return RootScreen()
 
 if __name__ == '__main__':
-    LoadBrakeSpeedMeterApp().run()
+    SpeedMeterApp().run()
