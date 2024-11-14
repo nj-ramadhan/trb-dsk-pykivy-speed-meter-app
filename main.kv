@@ -3,8 +3,6 @@
 #:import NoTransition kivy.uix.screenmanager.NoTransition
 #:include screen_login.kv
 #:include screen_main.kv
-#:include screen_load.kv
-#:include screen_brake.kv
 #:include screen_speed.kv
 
 
@@ -22,16 +20,6 @@
         id: screen_main
         name: 'screen_main'
         screen_manager: screen_manager
-
-    ScreenLoad:
-        id: screen_load
-        name: 'screen_load'
-        screen_manager: screen_manager   
-
-    ScreenBrake:
-        id: screen_brake
-        name: 'screen_brake'
-        screen_manager: screen_manager   
 
     ScreenSpeed:
         id: screen_speed

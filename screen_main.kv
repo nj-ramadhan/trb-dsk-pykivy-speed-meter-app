@@ -35,7 +35,7 @@
 
 				MDLabel:
 					id: subtitle            
-					text: "AXLE LOAD, BRAKE AND SPEED"
+					text: "SPEED TEST"
 					halign: "left"
 					valign: "middle"
 					font_style: 'H5'
@@ -217,30 +217,6 @@
 							halign: "left"
 							valign: "middle"
 							font_style: 'H6'
-
-					MDRectangleFlatIconButton:
-						id: bt_start_load
-						icon: "play"
-						text: "MULAI TEST AXLE LOAD"
-						halign: "center"
-						theme_text_color: "Custom"
-						text_color: "#EEEEEE"
-						md_bg_color: "#19A56B"	
-						size_hint_x: 1						
-						disabled: True
-						on_press: root.exec_start_load()
-
-					MDRectangleFlatIconButton:
-						id: bt_start_brake
-						icon: "play"
-						text: "MULAI TEST BRAKE"
-						halign: "center"
-						theme_text_color: "Custom"
-						text_color: "#EEEEEE"
-						md_bg_color: "#19A56B"	
-						size_hint_x: 1						
-						disabled: True
-						on_press: root.exec_start_brake()
 
 					MDRectangleFlatIconButton:
 						id: bt_start_speed
