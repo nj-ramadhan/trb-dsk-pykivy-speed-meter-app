@@ -2,84 +2,55 @@ from kivy.clock import Clock
 from kivy.lang import Builder
 from kivy.core.window import Window
 from kivy.core.text import LabelBase
-from kivymd.font_definitions import theme_font_styles
-from kivymd.uix.datatables import MDDataTable
+from kivy.resources import resource_add_path
 from kivy.uix.screenmanager import ScreenManager
+from kivymd.font_definitions import theme_font_styles
 from kivymd.uix.screen import MDScreen
-from kivymd.app import MDApp
-from kivy.metrics import dp
+from kivymd.uix.label import MDLabel
+from kivymd.uix.card import MDCard
 from kivymd.toast import toast
-import numpy as np
-import time
-import mysql.connector
-from escpos.printer import Serial as printerSerial
-import configparser
-import serial.tools.list_ports as ports
-import hashlib
-import serial
+from kivymd.app import MDApp
+import os, sys, time, numpy as np
+import configparser, hashlib, mysql.connector
 from pymodbus.client import ModbusTcpClient
-from kivy.logger import Logger
-
 
 colors = {
-    "Red": {
-        "A200": "#FF2A2A",
-        "A500": "#FF8080",
-        "A700": "#FFD5D5",
-    },
+    "Red"   : {"A200": "#FF2A2A","A500": "#FF8080","A700": "#FFD5D5",},
+    "Gray"  : {"200": "#CCCCCC","500": "#ECECEC","700": "#F9F9F9",},
+    "Blue"  : {"200": "#4471C4","500": "#5885D8","700": "#6C99EC",},
+    "Green" : {"200": "#2CA02C","500": "#2DB97F", "700": "#D5FFD5",},
+    "Yellow": {"200": "#ffD42A","500": "#ffE680","700": "#fff6D5",},
 
-    "Gray": {
-        "200": "#CCCCCC",
-        "500": "#ECECEC",
-        "700": "#F9F9F9",
-    },
-
-    "Blue": {
-        "200": "#4471C4",
-        "500": "#5885D8",
-        "700": "#6C99EC",
-    },
-
-    "Green": {
-        "200": "#2CA02C", #41cd93
-        "500": "#2DB97F",
-        "700": "#D5FFD5",
-    },
-
-    "Yellow": {
-        "200": "#ffD42A",
-        "500": "#ffE680",
-        "700": "#fff6D5",
-    },
-
-    "Light": {
-        "StatusBar": "E0E0E0",
-        "AppBar": "#202020",
-        "Background": "#EEEEEE",
-        "CardsDialogs": "#FFFFFF",
-        "FlatButtonDown": "#CCCCCC",
-    },
-
-    "Dark": {
-        "StatusBar": "101010",
-        "AppBar": "#E0E0E0",
-        "Background": "#111111",
-        "CardsDialogs": "#222222",
-        "FlatButtonDown": "#DDDDDD",
-    },
+    "Light" : {"StatusBar": "E0E0E0","AppBar": "#202020","Background": "#EEEEEE","CardsDialogs": "#FFFFFF","FlatButtonDown": "#CCCCCC","Text": "#000000",},
+    "Dark"  : {"StatusBar": "101010","AppBar": "#E0E0E0","Background": "#111111","CardsDialogs": "#222222","FlatButtonDown": "#DDDDDD","Text": "#FFFFFF",},
 }
 
-#load credentials from config.ini
+if getattr(sys, 'frozen', False):
+    app_path = os.path.dirname(os.path.abspath(__file__))
+else:
+    app_path = os.path.dirname(os.path.abspath(__file__))
+
+config_path = os.path.join(app_path, 'config.ini')
+print(f"Path config.ini: {config_path}")
+
 config = configparser.ConfigParser()
-config.read('config.ini')
+config.read(config_path)
+
 DB_HOST = config['mysql']['DB_HOST']
 DB_USER = config['mysql']['DB_USER']
 DB_PASSWORD = config['mysql']['DB_PASSWORD']
 DB_NAME = config['mysql']['DB_NAME']
-TB_LBS = config['mysql']['TB_LBS']
+TB_DATA = config['mysql']['TB_DATA']
 TB_USER = config['mysql']['TB_USER']
+TB_MERK = config['mysql']['TB_MERK']
 
-STANDARD_MIN_SPEED = float(config['standard']['STANDARD_MIN_SPEED']) # in rpm
+STANDARD_MIN_SPEED = float(config['standard']['STANDARD_MIN_SPEED']) # in mm
+
+SENSOR_ENCODER_PPR = float(config['setting']['SENSOR_ENCODER_PPR']) # in mm
+
+MODBUS_IP_PLC = config['setting']['MODBUS_IP_PLC']
+MODBUS_CLIENT = ModbusTcpClient(MODBUS_IP_PLC)
+
 COUNT_STARTING = 3
 COUNT_ACQUISITION = 4
 TIME_OUT = 500
@@ -89,14 +60,58 @@ dt_speed_flag = 0
 dt_speed_user = 1
 dt_speed_post = str(time.strftime("%Y/%m/%d %H:%M:%S", time.localtime()))
 
-dt_user = "SILAHKAN LOGIN"
+dt_user = ""
 dt_no_antrian = ""
-dt_no_reg = ""
+dt_no_pol = ""
 dt_no_uji = ""
 dt_nama = ""
 dt_jenis_kendaraan = ""
 
-modbus_client = ModbusTcpClient('192.168.1.111')
+flag_cylinder = False
+
+class ScreenHome(MDScreen):
+    def __init__(self, **kwargs):
+        super(ScreenHome, self).__init__(**kwargs)
+        Clock.schedule_once(self.delayed_init, 1)
+
+    def delayed_init(self, dt):
+        Clock.schedule_interval(self.regular_update_display, 3)
+
+    def regular_update_display(self, dt):
+        try:
+            self.ids.carousel.index += 1
+            
+        except Exception as e:
+            toast_msg = f'Error Update Display: {e}'
+            toast(toast_msg)                
+
+    def exec_navigate_home(self):
+        try:
+            self.screen_manager.current = 'screen_home'
+
+        except Exception as e:
+            toast_msg = f'Error Navigate to Home Screen: {e}'
+            toast(toast_msg)        
+
+    def exec_navigate_login(self):
+        global dt_user
+        try:
+            if (dt_user == ""):
+                self.screen_manager.current = 'screen_login'
+            else:
+                toast(f"Anda sudah login sebagai {dt_user}")
+
+        except Exception as e:
+            toast_msg = f'Error Navigate to Login Screen: {e}'
+            toast(toast_msg)     
+
+    def exec_navigate_main(self):
+        try:
+            self.screen_manager.current = 'screen_main'
+
+        except Exception as e:
+            toast_msg = f'Error Navigate to Main Screen: {e}'
+            toast(toast_msg)    
 
 class ScreenLogin(MDScreen):
     def __init__(self, **kwargs):
@@ -112,9 +127,12 @@ class ScreenLogin(MDScreen):
 
     def exec_login(self):
         global mydb, db_users
-        global dt_speed_user, dt_user
+        global dt_check_user, dt_user
+
+        screen_main = self.screen_manager.get_screen('screen_main')
 
         try:
+            screen_main.exec_reload_database()
             input_username = self.ids.tx_username.text
             input_password = self.ids.tx_password.text        
             # Adding salt at the last of the password
@@ -123,7 +141,7 @@ class ScreenLogin(MDScreen):
             hashed_password = hashlib.md5(dataBase_password.encode())
 
             mycursor = mydb.cursor()
-            mycursor.execute("SELECT id_user, nama, username, password, nama FROM users WHERE username = '"+str(input_username)+"' and password = '"+str(hashed_password.hexdigest())+"'")
+            mycursor.execute(f"SELECT id_user, nama, username, password, nama FROM {TB_USER} WHERE username = '{input_username}' and password = '{hashed_password.hexdigest()}'")
             myresult = mycursor.fetchone()
             db_users = np.array(myresult).T
             #if invalid
@@ -133,7 +151,7 @@ class ScreenLogin(MDScreen):
             else:
                 toast_msg = f'Berhasil Masuk, Selamat Datang {myresult[1]}'
                 toast(toast_msg)
-                dt_speed_user = myresult[0]
+                dt_check_user = myresult[0]
                 dt_user = myresult[1]
                 self.ids.tx_username.text = ""
                 self.ids.tx_password.text = "" 
@@ -144,65 +162,192 @@ class ScreenLogin(MDScreen):
             toast(toast_msg)        
             toast('Gagal Masuk, Nama Pengguna atau Password Salah')
 
+    def exec_navigate_home(self):
+        try:
+            self.screen_manager.current = 'screen_home'
+
+        except Exception as e:
+            toast_msg = f'Error Navigate to Home Screen: {e}'
+            toast(toast_msg)        
+
+    def exec_navigate_login(self):
+        global dt_user
+        try:
+            if (dt_user == ""):
+                self.screen_manager.current = 'screen_login'
+            else:
+                toast(f"Anda sudah login sebagai {dt_user}")
+
+        except Exception as e:
+            toast_msg = f'Error Navigate to Login Screen: {e}'
+            toast(toast_msg)     
+
+    def exec_navigate_main(self):
+        try:
+            self.screen_manager.current = 'screen_main'
+
+        except Exception as e:
+            toast_msg = f'Error Navigate to Main Screen: {e}'
+            toast(toast_msg)   
+
 class ScreenMain(MDScreen):   
     def __init__(self, **kwargs):
         super(ScreenMain, self).__init__(**kwargs)
-        global mydb, db_antrian
+        Clock.schedule_once(self.delayed_init, 1)                 
+
+    def delayed_init(self, dt):
         global flag_conn_stat, flag_play
         global count_starting, count_get_data
-
-        Clock.schedule_once(self.delayed_init, 1)
 
         flag_conn_stat = False
         flag_play = False
 
         count_starting = COUNT_STARTING
         count_get_data = COUNT_ACQUISITION
-        try:
-            mydb = mysql.connector.connect(
-            host = DB_HOST,
-            user = DB_USER,
-            password = DB_PASSWORD,
-            database = DB_NAME
-            )
-
-        except Exception as e:
-            toast_msg = f'error initiate Database: {e}'
-            toast(toast_msg)     
         
-    def delayed_init(self, dt):
-        Clock.schedule_interval(self.regular_update_connection, 5)
         Clock.schedule_interval(self.regular_update_display, 1)
-        layout = self.ids.layout_table
-        
-        self.data_tables = MDDataTable(
-            use_pagination=True,
-            pagination_menu_pos="auto",
-            rows_num=10,
-            column_data=[
-                ("No.", dp(10), self.sort_on_num),
-                ("Antrian", dp(20)),
-                ("No. Reg", dp(25)),
-                ("No. Uji", dp(35)),
-                ("Nama", dp(35)),
-                ("Jenis", dp(50)),
-                ("Status", dp(40)),
-            ],
-        )
-        self.data_tables.bind(on_row_press=self.on_row_press)
-        layout.add_widget(self.data_tables)
+        Clock.schedule_interval(self.regular_update_connection, 10)
+        self.exec_reload_database()
         self.exec_reload_table()
 
+    def on_antrian_row_press(self, instance):
+        global dt_no_antrian, dt_no_pol, dt_no_uji, dt_nama, dt_speed_flag
+        global dt_merk, dt_type, dt_jenis_kendaraan, dt_jbb, dt_bahan_bakar, dt_warna
+        global db_antrian, db_merk
+
+        try:
+            row = int(str(instance.id).replace("card_antrian",""))
+            dt_no_antrian           = f"{db_antrian[0, row]}"
+            dt_no_pol               = f"{db_antrian[1, row]}"
+            dt_no_uji               = f"{db_antrian[2, row]}"
+            dt_speed_flag           = 'Belum Tes' if (int(db_antrian[3, row]) == 0) else 'Sudah Tes'
+            dt_nama                 = f"{db_antrian[4, row]}"
+            dt_merk                 = f"{db_merk[np.where(db_merk == db_antrian[5, row])[0][0],1]}"
+            dt_type                 = f"{db_antrian[6, row]}"
+            dt_jenis_kendaraan      = f"{db_antrian[7, row]}"
+            dt_jbb                  = f"{db_antrian[8, row]}"
+            dt_bahan_bakar          = f"{db_antrian[9, row]}"
+            dt_warna                = f"{db_antrian[10, row]}"
+                        
+            self.exec_start()
+
+        except Exception as e:
+            toast_msg = f'Error Execute Command from Table Row: {e}'
+            toast(toast_msg)   
+
+    def regular_update_display(self, dt):
+        global flag_conn_stat
+        global count_starting, count_get_data
+        global dt_user, dt_no_antrian, dt_no_pol, dt_no_uji, dt_nama, dt_jenis_kendaraan
+        global dt_speed_flag, dt_speed_value, dt_speed_user, dt_speed_post
+        
+        try:
+            screen_home = self.screen_manager.get_screen('screen_home')
+            screen_login = self.screen_manager.get_screen('screen_login')
+            screen_speed_meter = self.screen_manager.get_screen('screen_speed_meter')
+            
+            self.ids.lb_time.text = str(time.strftime("%H:%M:%S", time.localtime()))
+            self.ids.lb_date.text = str(time.strftime("%d/%m/%Y", time.localtime()))
+            screen_home.ids.lb_time.text = str(time.strftime("%H:%M:%S", time.localtime()))
+            screen_home.ids.lb_date.text = str(time.strftime("%d/%m/%Y", time.localtime()))
+            screen_login.ids.lb_time.text = str(time.strftime("%H:%M:%S", time.localtime()))
+            screen_login.ids.lb_date.text = str(time.strftime("%d/%m/%Y", time.localtime()))
+            screen_speed_meter.ids.lb_time.text = str(time.strftime("%H:%M:%S", time.localtime()))
+            screen_speed_meter.ids.lb_date.text = str(time.strftime("%d/%m/%Y", time.localtime()))
+
+            self.ids.lb_dash_pendaftaran.text = str(dt_dash_pendaftaran)
+            self.ids.lb_dash_belum_uji.text = str(dt_dash_belum_uji)
+            self.ids.lb_dash_sudah_uji.text = str(dt_dash_sudah_uji)
+            
+            screen_speed_meter.ids.lb_no_antrian.text = str(dt_no_antrian)
+            screen_speed_meter.ids.lb_no_pol.text = str(dt_no_pol)
+            screen_speed_meter.ids.lb_no_uji.text = str(dt_no_uji)
+            screen_speed_meter.ids.lb_nama.text = str(dt_nama)
+            screen_speed_meter.ids.lb_jenis_kendaraan.text = str(dt_jenis_kendaraan)
+
+            screen_speed_meter.ids.lb_speed_val.text = str(dt_speed_value)
+
+            if(not flag_play):
+                screen_speed_meter.ids.bt_save.md_bg_color = colors['Green']['200']
+                screen_speed_meter.ids.bt_save.disabled = False
+                screen_speed_meter.ids.bt_reload.md_bg_color = colors['Red']['A200']
+                screen_speed_meter.ids.bt_reload.disabled = False
+
+            else:
+                screen_speed_meter.ids.bt_reload.disabled = True
+                screen_speed_meter.ids.bt_save.disabled = True
+
+            if(not flag_conn_stat):
+                self.ids.lb_comm.color = colors['Red']['A200']
+                self.ids.lb_comm.text = 'PLC Tidak Terhubung'
+                screen_home.ids.lb_comm.color = colors['Red']['A200']
+                screen_home.ids.lb_comm.text = 'PLC Tidak Terhubung'
+                screen_login.ids.lb_comm.color = colors['Red']['A200']
+                screen_login.ids.lb_comm.text = 'PLC Tidak Terhubung'
+                screen_speed_meter.ids.lb_comm.color = colors['Red']['A200']
+                screen_speed_meter.ids.lb_comm.text = 'PLC Tidak Terhubung'
+
+            else:
+                self.ids.lb_comm.color = colors['Blue']['200']
+                self.ids.lb_comm.text = 'PLC Terhubung'
+                screen_home.ids.lb_comm.color = colors['Blue']['200']
+                screen_home.ids.lb_comm.text = 'PLC Terhubung'
+                screen_login.ids.lb_comm.color = colors['Blue']['200']
+                screen_login.ids.lb_comm.text = 'PLC Terhubung'
+                screen_speed_meter.ids.lb_comm.color = colors['Blue']['200']
+                screen_speed_meter.ids.lb_comm.text = 'PLC Terhubung'
+
+            if(count_starting <= 0):
+                screen_speed_meter.ids.lb_test_subtitle.text = "HASIL PENGUKURAN"
+                screen_speed_meter.ids.lb_speed_val.text = str(np.round(dt_speed_value, 2))
+
+                if(dt_speed_value >= STANDARD_MIN_SPEED):
+                    screen_speed_meter.ids.lb_info.text = f"Ambang Batas Kecepatan yang diperbolehkan adalah {STANDARD_MIN_SPEED} rpm.\nDeviasi Kecepatan Kendaraan Anda DIdalam Ambang Batas"
+                else:
+                    screen_speed_meter.ids.lb_info.text = f"Ambang Batas Kecepatan yang diperbolehkan adalah {STANDARD_MIN_SPEED} rpm.\nDeviasi Kecepatan Kendaraan Anda Diluar Ambang Batas"
+
+            elif(count_starting > 0):
+                if(flag_play):
+                    screen_speed_meter.ids.lb_test_subtitle.text = "MEMULAI PENGUKURAN"
+                    screen_speed_meter.ids.lb_speed_val.text = str(count_starting)
+                    screen_speed_meter.ids.lb_info.text = "Silahkan Injak Pedal Gas Sesuai Arahan"
+
+            if(count_get_data <= 0):
+                if(not flag_play):
+                    if(dt_speed_value >= STANDARD_MIN_SPEED):
+                        screen_speed_meter.ids.lb_test_result.md_bg_color = colors['Green']['200']
+                        screen_speed_meter.ids.lb_test_result.text = "LULUS"
+                        dt_speed_flag = "Lulus"
+                        screen_speed_meter.ids.lb_test_result.text_color = colors['Green']['700']
+                    else:
+                        screen_speed_meter.ids.lb_test_result.md_bg_color = colors['Red']['A200']
+                        screen_speed_meter.ids.lb_test_result.text = "TIDAK LULUS"
+                        dt_speed_flag = "Tidak Lulus"
+                        screen_speed_meter.ids.lb_test_result.text_color = colors['Red']['A700']
+
+            elif(count_get_data > 0):
+                screen_speed_meter.ids.lb_test_result.md_bg_color = "#EEEEEE"
+                screen_speed_meter.ids.lb_test_result.text = ""
+
+            self.ids.lb_operator.text = f'Login Sebagai: {dt_user}' if dt_user != '' else 'Silahkan Login'
+            screen_home.ids.lb_operator.text = f'Login Sebagai: {dt_user}' if dt_user != '' else 'Silahkan Login'
+            screen_login.ids.lb_operator.text = f'Login Sebagai: {dt_user}' if dt_user != '' else 'Silahkan Login'
+            screen_speed_meter.ids.lb_operator.text = f'Login Sebagai: {dt_user}' if dt_user != '' else 'Silahkan Login'
+
+        except Exception as e:
+            toast_msg = f'Error Update Display: {e}'
+            toast(toast_msg)       
 
     def regular_update_connection(self, dt):
         global flag_conn_stat
-        try:
-            modbus_client.connect()
-            flag_conn_stat = modbus_client.connected
-            modbus_client.close()
 
+        try:
+            MODBUS_CLIENT.connect()
+            flag_conn_stat = MODBUS_CLIENT.connected
+            MODBUS_CLIENT.close()
+            
         except Exception as e:
-            toast_msg = f'{e}'
+            toast_msg = f'Error Update Connection: {e}'
             toast(toast_msg)   
             flag_conn_stat = False
 
@@ -222,174 +367,178 @@ class ScreenMain(MDScreen):
                 Clock.unschedule(self.regular_get_data)
 
             if flag_conn_stat:
-                modbus_client.connect()
-                speed_registers = modbus_client.read_holding_registers(1812, 1, slave=1) #V1360
-                modbus_client.close()
+                MODBUS_CLIENT.connect()
+                speed_registers = MODBUS_CLIENT.read_holding_registers(1812, 1, slave=1) #V1360
+                MODBUS_CLIENT.close()
 
                 dt_speed_value = speed_registers.registers[0]
                 
         except Exception as e:
-            print(e)
+            print(e)  
 
-    def sort_on_num(self, data):
+    def exec_reload_database(self):
+        global mydb
         try:
-            return zip(*sorted(enumerate(data),key=lambda l: l[0][0]))
-        except:
-            toast("Error sorting data")
-
-    def on_row_press(self, table, row):
-        global dt_no_antrian, dt_no_reg, dt_no_uji, dt_nama, dt_jenis_kendaraan
-        global dt_speed_flag, dt_speed_value, dt_speed_user, dt_speed_post
-
-        try:
-            start_index, end_index  = row.table.recycle_data[row.index]["range"]
-            dt_no_antrian           = row.table.recycle_data[start_index + 1]["text"]
-            dt_no_reg               = row.table.recycle_data[start_index + 2]["text"]
-            dt_no_uji               = row.table.recycle_data[start_index + 3]["text"]
-            dt_nama                 = row.table.recycle_data[start_index + 4]["text"]
-            dt_jenis_kendaraan      = row.table.recycle_data[start_index + 5]["text"]
-            dt_speed_flag           = row.table.recycle_data[start_index + 6]["text"]
-
+            mydb = mysql.connector.connect(host = DB_HOST,user = DB_USER,password = DB_PASSWORD,database = DB_NAME)
         except Exception as e:
-            toast_msg = f'error update table: {e}'
+            toast_msg = f'Error Initiate Database: {e}'
             toast(toast_msg)   
 
-    def regular_update_display(self, dt):
-        global flag_conn_stat
-        global count_starting, count_get_data
-        global dt_user, dt_no_antrian, dt_no_reg, dt_no_uji, dt_nama, dt_jenis_kendaraan
-        global dt_speed_flag, dt_speed_value, dt_speed_user, dt_speed_post
-        
-        try:
-            screen_login = self.screen_manager.get_screen('screen_login')
-            screen_speed = self.screen_manager.get_screen('screen_speed')
-            
-            self.ids.lb_time.text = str(time.strftime("%H:%M:%S", time.localtime()))
-            self.ids.lb_date.text = str(time.strftime("%d/%m/%Y", time.localtime()))
-            screen_login.ids.lb_time.text = str(time.strftime("%H:%M:%S", time.localtime()))
-            screen_login.ids.lb_date.text = str(time.strftime("%d/%m/%Y", time.localtime()))
-            screen_speed.ids.lb_time.text = str(time.strftime("%H:%M:%S", time.localtime()))
-            screen_speed.ids.lb_date.text = str(time.strftime("%d/%m/%Y", time.localtime()))
-
-            self.ids.lb_no_antrian.text = str(dt_no_antrian)
-            self.ids.lb_no_reg.text = str(dt_no_reg)
-            self.ids.lb_no_uji.text = str(dt_no_uji)
-            self.ids.lb_nama.text = str(dt_nama)
-            self.ids.lb_jenis_kendaraan.text = str(dt_jenis_kendaraan)
-
-            screen_speed.ids.lb_no_antrian.text = str(dt_no_antrian)
-            screen_speed.ids.lb_no_reg.text = str(dt_no_reg)
-            screen_speed.ids.lb_no_uji.text = str(dt_no_uji)
-            screen_speed.ids.lb_nama.text = str(dt_nama)
-            screen_speed.ids.lb_jenis_kendaraan.text = str(dt_jenis_kendaraan)
-
-            screen_speed.ids.lb_speed_val.text = str(dt_speed_value)
-
-            if(dt_speed_flag == "Belum Tes"):
-                self.ids.bt_start_speed.disabled = False
-            else:
-                self.ids.bt_start_speed.disabled = True
-
-            if(not flag_play):
-                screen_speed.ids.bt_save.md_bg_color = colors['Green']['200']
-                screen_speed.ids.bt_save.disabled = False
-                screen_speed.ids.bt_reload.md_bg_color = colors['Red']['A200']
-                screen_speed.ids.bt_reload.disabled = False                
-            else:
-                screen_speed.ids.bt_reload.disabled = True
-                screen_speed.ids.bt_save.disabled = True
-
-            if(not flag_conn_stat):
-                self.ids.lb_comm.color = colors['Red']['A200']
-                self.ids.lb_comm.text = 'PLC Tidak Terhubung'
-                screen_login.ids.lb_comm.color = colors['Red']['A200']
-                screen_login.ids.lb_comm.text = 'PLC Tidak Terhubung'
-                screen_speed.ids.lb_comm.color = colors['Red']['A200']
-                screen_speed.ids.lb_comm.text = 'PLC Tidak Terhubung'
-
-            else:
-                self.ids.lb_comm.color = colors['Blue']['200']
-                self.ids.lb_comm.text = 'PLC Terhubung'
-                screen_login.ids.lb_comm.color = colors['Blue']['200']
-                screen_login.ids.lb_comm.text = 'PLC Terhubung'
-                screen_speed.ids.lb_comm.color = colors['Blue']['200']
-                screen_speed.ids.lb_comm.text = 'PLC Terhubung'
-
-            if(count_starting <= 0):
-                screen_speed.ids.lb_test_subtitle.text = "HASIL PENGUKURAN"
-                screen_speed.ids.lb_speed_val.text = str(np.round(dt_speed_value, 2))
-
-            elif(count_starting > 0):
-                if(flag_play):
-                    screen_speed.ids.lb_test_subtitle.text = "MEMULAI PENGUKURAN"
-                    screen_speed.ids.lb_speed_val.text = str(count_starting)
-                    screen_speed.ids.lb_info.text = "Silahkan Injak Pedal Gas Sesuai Arahan"
-
-            if(dt_speed_value >= STANDARD_MIN_SPEED):
-                screen_speed.ids.lb_info.text = "Deviasi Kecepatan Kendaraan Anda Dalam Range Ambang Batas"
-            else:
-                screen_speed.ids.lb_info.text = "Deviasi Kecepatan Kendaraan Anda Diluar Ambang Batas"
-
-            if(count_get_data <= 0):
-                if(not flag_play):
-                    screen_speed.ids.lb_test_result.size_hint_y = 0.25
-                    if(dt_speed_value >= STANDARD_MIN_SPEED):
-                        screen_speed.ids.lb_test_result.md_bg_color = colors['Green']['200']
-                        screen_speed.ids.lb_test_result.text = "LULUS"
-                        dt_speed_flag = "Lulus"
-                        screen_speed.ids.lb_test_result.text_color = colors['Green']['700']
-                    else:
-                        screen_speed.ids.lb_test_result.md_bg_color = colors['Red']['A200']
-                        screen_speed.ids.lb_test_result.text = "TIDAK LULUS"
-                        dt_speed_flag = "Tidak Lulus"
-                        screen_speed.ids.lb_test_result.text_color = colors['Red']['A700']
-
-            elif(count_get_data > 0):
-                screen_speed.ids.lb_test_result.md_bg_color = "#EEEEEE"
-                screen_speed.ids.lb_test_result.text = ""
-                screen_speed.ids.lb_info.text = f"Ambang Batas Kecepatan yang diperbolehkan adalah {STANDARD_MIN_SPEED} rpm"
-
-            self.ids.lb_operator.text = dt_user
-            screen_login.ids.lb_operator.text = dt_user
-            screen_speed.ids.lb_operator.text = dt_user
-
-        except Exception as e:
-            toast_msg = f'error update display: {e}'
-            toast(toast_msg)                
-
     def exec_reload_table(self):
-        global mydb, db_antrian
-        try:
-            mycursor = mydb.cursor()
-            mycursor.execute("SELECT noantrian, nopol, nouji, user, idjeniskendaraan, speed_flag FROM tb_cekident")
-            myresult = mycursor.fetchall()
-            db_antrian = np.array(myresult).T
+        global mydb, db_antrian, db_merk
+        global dt_dash_pendaftaran, dt_dash_belum_uji, dt_dash_sudah_uji
 
-            self.data_tables.row_data=[(f"{i+1}", f"{db_antrian[0, i]}", f"{db_antrian[1, i]}", f"{db_antrian[2, i]}", f"{db_antrian[3, i]}" ,f"{db_antrian[4, i]}", 
-                                        'Belum Tes' if (int(db_antrian[5, i]) == 0) else ('Lulus' if (int(db_antrian[5, i]) == 1) else 'Tidak Lulus')) 
-                                        for i in range(len(db_antrian[0]))]
+        try:
+            tb_antrian = mydb.cursor()
+            tb_antrian.execute(f"SELECT noantrian, nopol, nouji, speed_flag, user, merk, type, idjeniskendaraan, jbb, bahan_bakar, warna FROM {TB_DATA}")
+            result_tb_antrian = tb_antrian.fetchall()
+            mydb.commit()
+            db_antrian = np.array(result_tb_antrian).T
+            db_pendaftaran = np.array(result_tb_antrian)
+            dt_dash_pendaftaran = db_pendaftaran[:,3].size
+            dt_dash_belum_uji = np.where(db_pendaftaran[:,3] == 0)[0].size
+            dt_dash_sudah_uji = np.where(db_pendaftaran[:,3] == 1)[0].size
+
+            tb_merk = mydb.cursor()
+            tb_merk.execute(f"SELECT ID, DESCRIPTION FROM {TB_MERK}")
+            result_tb_merk = tb_merk.fetchall()
+            mydb.commit()
+            db_merk = np.array(result_tb_merk)
+
+            layout_list = self.ids.layout_list
+            layout_list.clear_widgets(children=None)
 
         except Exception as e:
-            toast_msg = f'error reload table: {e}'
+            toast_msg = f'Error Remove Widget: {e}'
+            print(toast_msg)
+        
+        try:           
+            layout_list = self.ids.layout_list
+            for i in range(db_antrian[0,:].size):
+                layout_list.add_widget(
+                    MDCard(
+                        MDLabel(text=f"{db_antrian[0, i]}", size_hint_x= 0.05),
+                        MDLabel(text=f"{db_antrian[1, i]}", size_hint_x= 0.08),
+                        MDLabel(text=f"{db_antrian[2, i]}", size_hint_x= 0.08),
+                        MDLabel(text='Belum Tes' if (int(db_antrian[3, i]) == 0) else 'Sudah Tes', size_hint_x= 0.08),
+                        MDLabel(text=f"{db_antrian[4, i]}", size_hint_x= 0.12),
+                        MDLabel(text=f"{db_merk[np.where(db_merk == db_antrian[5, i])[0][0],1]}", size_hint_x= 0.08),
+                        MDLabel(text=f"{db_antrian[6, i]}", size_hint_x= 0.05),
+                        MDLabel(text=f"{db_antrian[7, i]}", size_hint_x= 0.15),
+                        MDLabel(text=f"{db_antrian[8, i]}", size_hint_x= 0.05),
+                        MDLabel(text=f"{db_antrian[9, i]}", size_hint_x= 0.08),
+                        MDLabel(text=f"{db_antrian[10, i]}", size_hint_x= 0.08),
+
+                        ripple_behavior = True,
+                        on_press = self.on_antrian_row_press,
+                        padding = 20,
+                        id=f"card_antrian{i}",
+                        size_hint_y=None,
+                        height="60dp",
+                        )
+                    )
+
+        except Exception as e:
+            toast_msg = f'Error Reload Table: {e}'
             print(toast_msg)
 
-    def exec_start_speed(self):
+    def exec_start(self):
+        global dt_speed_flag, dt_no_antrian, dt_user
         global flag_play
 
-        if(not flag_play):
-            Clock.schedule_interval(self.regular_get_data, 1)
-            self.open_screen_speed()
-            flag_play = True
+        if (dt_user != ''):
+            if (dt_speed_flag == 'Belum Tes'):
+                if(not flag_play):
+                    Clock.schedule_interval(self.regular_get_data, 1)
+                    self.open_screen_speed_meter()
+                    flag_play = True
+            else:
+                toast(f'No. Antrian {dt_no_antrian} Sudah Tes')
+        else:
+            toast(f'Silahkan Login Untuk Melakukan Pengujian')        
 
-    def open_screen_speed(self):
-        self.screen_manager.current = 'screen_speed'
+    def exec_cylinder_up(self):
+        global flag_conn_stat
+        global flag_cylinder
+
+        if(not flag_cylinder):
+            flag_cylinder = True
+
+        try:
+            if flag_conn_stat:
+                MODBUS_CLIENT.connect()
+                MODBUS_CLIENT.write_coil(3082, flag_cylinder, slave=1) #M10
+                MODBUS_CLIENT.close()
+        except:
+            toast("error send exec_cylinder_up data to PLC Slave") 
+
+    def exec_cylinder_down(self):
+        global flag_conn_stat
+        global flag_cylinder
+
+        if(flag_cylinder):
+            flag_cylinder = False
+
+        try:
+            if flag_conn_stat:
+                MODBUS_CLIENT.connect()
+                MODBUS_CLIENT.write_coil(3083, not flag_cylinder, slave=1) #M11
+                MODBUS_CLIENT.close()
+        except:
+            toast("error send exec_cylinder_down data to PLC Slave") 
+
+    def exec_cylinder_stop(self):
+        global flag_conn_stat
+
+        try:
+            if flag_conn_stat:
+                MODBUS_CLIENT.connect()
+                MODBUS_CLIENT.write_coil(3082, False, slave=1) #M10
+                MODBUS_CLIENT.write_coil(3083, False, slave=1) #M11
+                MODBUS_CLIENT.close()
+        except:
+            toast("error send exec_cylinder_stop data to PLC Slave")             
+
+    def open_screen_speed_meter(self):
+        self.screen_manager.current = 'screen_speed_meter'
 
     def exec_logout(self):
+        global dt_user
+
+        dt_user = ""
         self.screen_manager.current = 'screen_login'
 
-class ScreenSpeed(MDScreen):        
+    def exec_navigate_home(self):
+        try:
+            self.screen_manager.current = 'screen_home'
+
+        except Exception as e:
+            toast_msg = f'Error Navigate to Home Screen: {e}'
+            toast(toast_msg)        
+
+    def exec_navigate_login(self):
+        global dt_user
+        try:
+            if (dt_user == ""):
+                self.screen_manager.current = 'screen_login'
+            else:
+                toast(f"Anda sudah login sebagai {dt_user}")
+
+        except Exception as e:
+            toast_msg = f'Error Navigate to Login Screen: {e}'
+            toast(toast_msg)    
+
+    def exec_navigate_main(self):
+        try:
+            self.screen_manager.current = 'screen_main'
+
+        except Exception as e:
+            toast_msg = f'Error Navigate to Main Screen: {e}'
+            toast(toast_msg)   
+
+class ScreenSpeedMeter(MDScreen):        
     def __init__(self, **kwargs):
-        super(ScreenSpeed, self).__init__(**kwargs)
+        super(ScreenSpeedMeter, self).__init__(**kwargs)
         Clock.schedule_once(self.delayed_init, 2)
         
     def delayed_init(self, dt):
@@ -428,7 +577,7 @@ class ScreenSpeed(MDScreen):
         global flag_play
         global count_starting, count_get_data
         global mydb, db_antrian
-        global dt_no_antrian, dt_no_reg, dt_no_uji, dt_nama, dt_jenis_kendaraan
+        global dt_no_antrian, dt_no_pol, dt_no_uji, dt_nama, dt_jenis_kendaraan
         global dt_speed_flag, dt_speed_value, dt_speed_user, dt_speed_post
 
         self.ids.bt_save.disabled = True
@@ -458,6 +607,9 @@ class ScreenSpeed(MDScreen):
         self.screen_manager.current = 'screen_main'
 
     def exec_logout(self):
+        global dt_user
+
+        dt_user = ""        
         self.screen_manager.current = 'screen_login'
 
 
@@ -473,24 +625,60 @@ class SpeedMeterApp(MDApp):
         self.theme_cls.primary_palette = "Gray"
         self.theme_cls.accent_palette = "Blue"
         self.theme_cls.theme_style = "Light"
-        self.icon = 'assets/logo.png'
+        self.icon = 'assets/images/logo-speed-app.ico'
 
         LabelBase.register(
             name="Orbitron-Regular",
             fn_regular="assets/fonts/Orbitron-Regular.ttf")
+        
+        LabelBase.register(
+            name="Draco",
+            fn_regular="assets/fonts/Draco.otf")        
 
+        LabelBase.register(
+            name="Recharge",
+            fn_regular="assets/fonts/Recharge.otf") 
+        
         theme_font_styles.append('Display')
         self.theme_cls.font_styles["Display"] = [
             "Orbitron-Regular", 72, False, 0.15]       
+
+        theme_font_styles.append('H4')
+        self.theme_cls.font_styles["H4"] = [
+            "Recharge", 30, False, 0.15] 
+
+        theme_font_styles.append('H5')
+        self.theme_cls.font_styles["H5"] = [
+            "Recharge", 20, False, 0.15] 
+
+        theme_font_styles.append('H6')
+        self.theme_cls.font_styles["H6"] = [
+            "Recharge", 16, False, 0.15] 
+
+        theme_font_styles.append('Subtitle1')
+        self.theme_cls.font_styles["Subtitle1"] = [
+            "Recharge", 12, False, 0.15] 
+
+        theme_font_styles.append('Body1')
+        self.theme_cls.font_styles["Body1"] = [
+            "Recharge", 12, False, 0.15] 
+        
+        theme_font_styles.append('Button')
+        self.theme_cls.font_styles["Button"] = [
+            "Recharge", 10, False, 0.15] 
+
+        theme_font_styles.append('Caption')
+        self.theme_cls.font_styles["Caption"] = [
+            "Recharge", 8, False, 0.15]              
         
         Window.fullscreen = 'auto'
-        # Window.borderless = False
-        # Window.size = 900, 1440
-        # Window.size = 450, 720
-        # Window.allow_screensaver = True
-
         Builder.load_file('main.kv')
         return RootScreen()
 
 if __name__ == '__main__':
-    SpeedMeterApp().run()
+    try:
+        if hasattr(sys, '_MEIPASS'):
+            resource_add_path(os.path.join(sys._MEIPASS))
+        SpeedMeterApp().run()
+    except Exception as e:
+        print(e)

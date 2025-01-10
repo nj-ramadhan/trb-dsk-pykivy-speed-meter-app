@@ -2,9 +2,9 @@
 venv/
 
 # Ignore PyInstaller build and distribution folders
-/build/
+build/
 dist/
-*.spec
+# *.spec
 
 # Ignore Python cache files
 __pycache__/
@@ -16,3 +16,5 @@ __pycache__/
 *.swp
 *.swo
 *.DS_Store
+
+Output/

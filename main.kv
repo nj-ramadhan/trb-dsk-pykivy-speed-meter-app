@@ -1,15 +1,20 @@
 #:kivy 2.1.0
 
 #:import NoTransition kivy.uix.screenmanager.NoTransition
+#:include screen_home.kv
 #:include screen_login.kv
 #:include screen_main.kv
-#:include screen_speed.kv
-
+#:include screen_speed_meter.kv
 
 # ScreenManager:
 <RootScreen>:
     id: screen_manager
     transition: NoTransition()
+
+    ScreenHome:
+        id: screen_home
+        name: 'screen_home'
+        screen_manager: screen_manager
 
     ScreenLogin:
         id: screen_login
@@ -21,8 +26,8 @@
         name: 'screen_main'
         screen_manager: screen_manager
 
-    ScreenSpeed:
-        id: screen_speed
-        name: 'screen_speed'
+    ScreenSpeedMeter:
+        id: screen_speed_meter
+        name: 'screen_speed_meter'
         screen_manager: screen_manager   
 
