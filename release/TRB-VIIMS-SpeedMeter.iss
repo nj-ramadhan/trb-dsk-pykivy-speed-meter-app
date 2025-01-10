@@ -30,7 +30,7 @@ ChangesAssociations=yes
 DisableProgramGroupPage=yes
 ; Uncomment the following line to run in non administrative install mode (install for current user only.)
 ;PrivilegesRequired=lowest
-OutputBaseFilename=TRB-VIIMS-SideSlipMeterApp-Installer
+OutputBaseFilename=TRB-VIIMS-SpeedMeterApp-Installer
 SetupIconFile=D:\PRJ\TRB - Vehicle Inspection Integration Management System\trb-dsk-pykivy-speed-meter-app\release\Application Folder\assets\images\logo-speed-app.ico
 Compression=lzma
 SolidCompression=yes
