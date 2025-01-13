@@ -51,8 +51,8 @@ SENSOR_ENCODER_PPR = float(config['setting']['SENSOR_ENCODER_PPR']) # in mm
 MODBUS_IP_PLC = config['setting']['MODBUS_IP_PLC']
 MODBUS_CLIENT = ModbusTcpClient(MODBUS_IP_PLC)
 
-COUNT_STARTING = 3
-COUNT_ACQUISITION = 4
+COUNT_STARTING = 0
+COUNT_ACQUISITION = 7
 TIME_OUT = 500
 
 dt_speed_value = 0
@@ -455,49 +455,7 @@ class ScreenMain(MDScreen):
             else:
                 toast(f'No. Antrian {dt_no_antrian} Sudah Tes')
         else:
-            toast(f'Silahkan Login Untuk Melakukan Pengujian')        
-
-    def exec_cylinder_up(self):
-        global flag_conn_stat
-        global flag_cylinder
-
-        if(not flag_cylinder):
-            flag_cylinder = True
-
-        try:
-            if flag_conn_stat:
-                MODBUS_CLIENT.connect()
-                MODBUS_CLIENT.write_coil(3082, flag_cylinder, slave=1) #M10
-                MODBUS_CLIENT.close()
-        except:
-            toast("error send exec_cylinder_up data to PLC Slave") 
-
-    def exec_cylinder_down(self):
-        global flag_conn_stat
-        global flag_cylinder
-
-        if(flag_cylinder):
-            flag_cylinder = False
-
-        try:
-            if flag_conn_stat:
-                MODBUS_CLIENT.connect()
-                MODBUS_CLIENT.write_coil(3083, not flag_cylinder, slave=1) #M11
-                MODBUS_CLIENT.close()
-        except:
-            toast("error send exec_cylinder_down data to PLC Slave") 
-
-    def exec_cylinder_stop(self):
-        global flag_conn_stat
-
-        try:
-            if flag_conn_stat:
-                MODBUS_CLIENT.connect()
-                MODBUS_CLIENT.write_coil(3082, False, slave=1) #M10
-                MODBUS_CLIENT.write_coil(3083, False, slave=1) #M11
-                MODBUS_CLIENT.close()
-        except:
-            toast("error send exec_cylinder_stop data to PLC Slave")             
+            toast(f'Silahkan Login Untuk Melakukan Pengujian')              
 
     def open_screen_speed_meter(self):
         self.screen_manager.current = 'screen_speed_meter'
@@ -543,6 +501,48 @@ class ScreenSpeedMeter(MDScreen):
         
     def delayed_init(self, dt):
         pass
+
+    def exec_cylinder_up(self):
+        global flag_conn_stat
+        global flag_cylinder
+
+        if(not flag_cylinder):
+            flag_cylinder = True
+
+        try:
+            if flag_conn_stat:
+                MODBUS_CLIENT.connect()
+                MODBUS_CLIENT.write_coil(3082, flag_cylinder, slave=1) #M10
+                MODBUS_CLIENT.close()
+        except:
+            toast("error send exec_cylinder_up data to PLC Slave") 
+
+    def exec_cylinder_down(self):
+        global flag_conn_stat
+        global flag_cylinder
+
+        if(flag_cylinder):
+            flag_cylinder = False
+
+        try:
+            if flag_conn_stat:
+                MODBUS_CLIENT.connect()
+                MODBUS_CLIENT.write_coil(3083, not flag_cylinder, slave=1) #M11
+                MODBUS_CLIENT.close()
+        except:
+            toast("error send exec_cylinder_down data to PLC Slave") 
+
+    def exec_cylinder_stop(self):
+        global flag_conn_stat
+
+        try:
+            if flag_conn_stat:
+                MODBUS_CLIENT.connect()
+                MODBUS_CLIENT.write_coil(3082, False, slave=1) #M10
+                MODBUS_CLIENT.write_coil(3083, False, slave=1) #M11
+                MODBUS_CLIENT.close()
+        except:
+            toast("error send exec_cylinder_stop data to PLC Slave")    
 
     def exec_start_speed(self):
         global flag_play
