@@ -52,7 +52,7 @@ MODBUS_IP_PLC = config['setting']['MODBUS_IP_PLC']
 MODBUS_CLIENT = ModbusTcpClient(MODBUS_IP_PLC)
 
 COUNT_STARTING = 0
-COUNT_ACQUISITION = 7
+COUNT_ACQUISITION = 25
 TIME_OUT = 500
 
 dt_speed_value = 0
@@ -66,6 +66,10 @@ dt_no_pol = ""
 dt_no_uji = ""
 dt_nama = ""
 dt_jenis_kendaraan = ""
+
+dt_dash_pendaftaran = 0
+dt_dash_belum_uji = 0
+dt_dash_sudah_uji = 0
 
 flag_cylinder = False
 
