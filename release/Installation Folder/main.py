@@ -303,7 +303,7 @@ class ScreenMain(MDScreen):
 
             if(count_starting <= 0):
                 screen_speed_meter.ids.lb_test_subtitle.text = "HASIL PENGUKURAN"
-                screen_speed_meter.ids.lb_speed_val.text = str(np.round(dt_speed_value, 2))
+                screen_speed_meter.ids.lb_speed_val.text = str(dt_speed_value)
 
                 if(dt_speed_value >= STANDARD_MIN_SPEED):
                     screen_speed_meter.ids.lb_info.text = f"Ambang Batas Kecepatan yang diperbolehkan adalah {STANDARD_MIN_SPEED} rpm.\nDeviasi Kecepatan Kendaraan Anda DIdalam Ambang Batas"
@@ -372,10 +372,10 @@ class ScreenMain(MDScreen):
 
             if flag_conn_stat:
                 MODBUS_CLIENT.connect()
-                speed_registers = MODBUS_CLIENT.read_holding_registers(1812, 1, slave=1) #V1360
+                speed_registers = MODBUS_CLIENT.read_holding_registers(1812, count=1, slave=1) #V1360
                 MODBUS_CLIENT.close()
 
-                dt_speed_value = speed_registers.registers[0]
+                dt_speed_value = np.round(speed_registers.registers[0] / 10, 2)
                 
         except Exception as e:
             print(e)  
