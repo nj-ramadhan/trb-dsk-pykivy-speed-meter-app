@@ -61,7 +61,7 @@ GET_DATA_INTERVAL = float(config['setting']['GET_DATA_INTERVAL'])
 
 MODBUS_IP_PLC = config['setting']['MODBUS_IP_PLC']
 MODBUS_CLIENT = ModbusTcpClient(MODBUS_IP_PLC)
-REGISTER_DATA_SPEED = config['setting']['REGISTER_DATA_SPEED']
+REGISTER_DATA_SPEED = int(config['setting']['REGISTER_DATA_SPEED'])
 
 # sensor setting
 SENSOR_ENCODER_PPR = float(config['setting']['SENSOR_ENCODER_PPR']) # in mm
