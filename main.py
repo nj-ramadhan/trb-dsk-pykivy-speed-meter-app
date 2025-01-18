@@ -25,16 +25,24 @@ colors = {
     "Dark"  : {"StatusBar": "101010","AppBar": "#E0E0E0","Background": "#111111","CardsDialogs": "#222222","FlatButtonDown": "#DDDDDD","Text": "#FFFFFF",},
 }
 
+config_name = 'config.ini'
 if getattr(sys, 'frozen', False):
-    app_path = os.path.dirname(os.path.abspath(__file__))
+    application_path = os.path.dirname(sys.executable)
+    running_mode = 'Frozen/executable'
 else:
-    app_path = os.path.dirname(os.path.abspath(__file__))
+    try:
+        app_full_path = os.path.realpath(__file__)
+        application_path = os.path.dirname(app_full_path)
+        running_mode = "Non-interactive (e.g. 'python myapp.py')"
+    except NameError:
+        application_path = os.getcwd()
+        running_mode = 'Interactive'
 
-config_path = os.path.join(app_path, 'config.ini')
-print(f"Path config.ini: {config_path}")
+config_full_path = os.path.join(application_path, config_name)
+print(config_full_path)
 
 config = configparser.ConfigParser()
-config.read(config_path)
+config.read(config_full_path)
 
 DB_HOST = config['mysql']['DB_HOST']
 DB_USER = config['mysql']['DB_USER']
@@ -46,14 +54,17 @@ TB_MERK = config['mysql']['TB_MERK']
 
 STANDARD_MIN_SPEED = float(config['standard']['STANDARD_MIN_SPEED']) # in mm
 
-SENSOR_ENCODER_PPR = float(config['setting']['SENSOR_ENCODER_PPR']) # in mm
+TIME_OUT = int(config['setting']['TIME_OUT'])
+COUNT_STARTING = int(config['setting']['COUNT_STARTING'])
+COUNT_ACQUISITION = int(config['setting']['COUNT_ACQUISITION'])
+UPDATE_CAROUSEL_INTERVAL = float(config['setting']['UPDATE_CAROUSEL_INTERVAL'])
+UPDATE_CONNECTION_INTERVAL = float(config['setting']['UPDATE_CONNECTION_INTERVAL'])
+GET_DATA_INTERVAL = float(config['setting']['GET_DATA_INTERVAL'])
 
 MODBUS_IP_PLC = config['setting']['MODBUS_IP_PLC']
 MODBUS_CLIENT = ModbusTcpClient(MODBUS_IP_PLC)
 
-COUNT_STARTING = 0
-COUNT_ACQUISITION = 25
-TIME_OUT = 500
+SENSOR_ENCODER_PPR = float(config['setting']['SENSOR_ENCODER_PPR']) # in mm
 
 dt_speed_value = 0
 dt_speed_flag = 0
@@ -79,14 +90,14 @@ class ScreenHome(MDScreen):
         Clock.schedule_once(self.delayed_init, 1)
 
     def delayed_init(self, dt):
-        Clock.schedule_interval(self.regular_update_display, 3)
+        Clock.schedule_interval(self.regular_update_carousel, UPDATE_CAROUSEL_INTERVAL)
 
-    def regular_update_display(self, dt):
+    def regular_update_carousel(self, dt):
         try:
             self.ids.carousel.index += 1
             
         except Exception as e:
-            toast_msg = f'Error Update Display: {e}'
+            toast_msg = f'Error Update Carousel: {e}'
             toast(toast_msg)                
 
     def exec_navigate_home(self):
@@ -342,7 +353,7 @@ class ScreenMain(MDScreen):
             toast_msg = f'Error Update Display: {e}'
             toast(toast_msg)       
 
-    def regular_update_connection(self, dt):
+    def regular_update_connection(self, UPDATE_CONNECTION_INTERVAL):
         global flag_conn_stat
 
         try:
@@ -453,7 +464,7 @@ class ScreenMain(MDScreen):
         if (dt_user != ''):
             if (dt_speed_flag == 'Belum Tes'):
                 if(not flag_play):
-                    Clock.schedule_interval(self.regular_get_data, 1)
+                    Clock.schedule_interval(self.regular_get_data, GET_DATA_INTERVAL)
                     self.open_screen_speed_meter()
                     flag_play = True
             else:
@@ -629,7 +640,7 @@ class SpeedMeterApp(MDApp):
         self.theme_cls.primary_palette = "Gray"
         self.theme_cls.accent_palette = "Blue"
         self.theme_cls.theme_style = "Light"
-        self.icon = 'assets/images/logo-speed-app.ico'
+        self.icon = 'assets/images/logo-speed-app.png'
 
         LabelBase.register(
             name="Orbitron-Regular",
@@ -680,9 +691,4 @@ class SpeedMeterApp(MDApp):
         return RootScreen()
 
 if __name__ == '__main__':
-    try:
-        if hasattr(sys, '_MEIPASS'):
-            resource_add_path(os.path.join(sys._MEIPASS))
-        SpeedMeterApp().run()
-    except Exception as e:
-        print(e)
+    SpeedMeterApp().run()
