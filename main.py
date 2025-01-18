@@ -39,11 +39,10 @@ else:
         running_mode = 'Interactive'
 
 config_full_path = os.path.join(application_path, config_name)
-print(config_full_path)
-
 config = configparser.ConfigParser()
 config.read(config_full_path)
 
+# SQL setting
 DB_HOST = config['mysql']['DB_HOST']
 DB_USER = config['mysql']['DB_USER']
 DB_PASSWORD = config['mysql']['DB_PASSWORD']
@@ -52,8 +51,7 @@ TB_DATA = config['mysql']['TB_DATA']
 TB_USER = config['mysql']['TB_USER']
 TB_MERK = config['mysql']['TB_MERK']
 
-STANDARD_MIN_SPEED = float(config['standard']['STANDARD_MIN_SPEED']) # in mm
-
+# system setting
 TIME_OUT = int(config['setting']['TIME_OUT'])
 COUNT_STARTING = int(config['setting']['COUNT_STARTING'])
 COUNT_ACQUISITION = int(config['setting']['COUNT_ACQUISITION'])
@@ -63,8 +61,13 @@ GET_DATA_INTERVAL = float(config['setting']['GET_DATA_INTERVAL'])
 
 MODBUS_IP_PLC = config['setting']['MODBUS_IP_PLC']
 MODBUS_CLIENT = ModbusTcpClient(MODBUS_IP_PLC)
+REGISTER_DATA_SPEED = config['setting']['REGISTER_DATA_SPEED']
 
+# sensor setting
 SENSOR_ENCODER_PPR = float(config['setting']['SENSOR_ENCODER_PPR']) # in mm
+
+# system standard
+STANDARD_MIN_SPEED = float(config['standard']['STANDARD_MIN_SPEED']) # in mm
 
 dt_speed_value = 0
 dt_speed_flag = 0
@@ -383,7 +386,7 @@ class ScreenMain(MDScreen):
 
             if flag_conn_stat:
                 MODBUS_CLIENT.connect()
-                speed_registers = MODBUS_CLIENT.read_holding_registers(1812, count=1, slave=1) #V1360
+                speed_registers = MODBUS_CLIENT.read_holding_registers(REGISTER_DATA_SPEED, count=1, slave=1) #V1360
                 MODBUS_CLIENT.close()
 
                 dt_speed_value = np.round(speed_registers.registers[0] / 10, 2)
@@ -569,7 +572,7 @@ class ScreenSpeedMeter(MDScreen):
         count_get_data = COUNT_ACQUISITION
 
         if(not flag_play):
-            Clock.schedule_interval(screen_main.regular_get_data, 1)
+            Clock.schedule_interval(screen_main.regular_get_data, GET_DATA_INTERVAL)
             flag_play = True
 
     def exec_reload(self):
@@ -585,7 +588,7 @@ class ScreenSpeedMeter(MDScreen):
         self.ids.lb_speed_val.text = "..."
 
         if(not flag_play):
-            Clock.schedule_interval(screen_main.regular_get_data, 1)
+            Clock.schedule_interval(screen_main.regular_get_data, GET_DATA_INTERVAL)
             flag_play = True
 
     def exec_save(self):
