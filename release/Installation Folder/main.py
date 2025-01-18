@@ -238,7 +238,7 @@ class ScreenMain(MDScreen):
             dt_no_antrian           = f"{db_antrian[0, row]}"
             dt_no_pol               = f"{db_antrian[1, row]}"
             dt_no_uji               = f"{db_antrian[2, row]}"
-            dt_speed_flag           = 'Belum Tes' if (int(db_antrian[3, row]) == 0) else 'Sudah Tes'
+            dt_speed_flag           = 'Lulus' if (int(db_antrian[3, row]) == 2) else 'Tidak Lulus' if (int(db_antrian[3, row]) == 1) else 'Belum Tes'
             dt_nama                 = f"{db_antrian[4, row]}"
             dt_merk                 = f"{db_merk[np.where(db_merk == db_antrian[5, row])[0][0],1]}"
             dt_type                 = f"{db_antrian[6, row]}"
@@ -347,6 +347,8 @@ class ScreenMain(MDScreen):
                 screen_speed_meter.ids.lb_test_result.md_bg_color = "#EEEEEE"
                 screen_speed_meter.ids.lb_test_result.text = ""
 
+            self.ids.bt_logout.disabled = False if dt_user != '' else True
+
             self.ids.lb_operator.text = f'Login Sebagai: {dt_user}' if dt_user != '' else 'Silahkan Login'
             screen_home.ids.lb_operator.text = f'Login Sebagai: {dt_user}' if dt_user != '' else 'Silahkan Login'
             screen_login.ids.lb_operator.text = f'Login Sebagai: {dt_user}' if dt_user != '' else 'Silahkan Login'
@@ -438,7 +440,7 @@ class ScreenMain(MDScreen):
                         MDLabel(text=f"{db_antrian[0, i]}", size_hint_x= 0.05),
                         MDLabel(text=f"{db_antrian[1, i]}", size_hint_x= 0.08),
                         MDLabel(text=f"{db_antrian[2, i]}", size_hint_x= 0.08),
-                        MDLabel(text='Belum Tes' if (int(db_antrian[3, i]) == 0) else 'Sudah Tes', size_hint_x= 0.08),
+                        MDLabel(text='Lulus' if (int(db_antrian[3, i]) == 2) else 'Tidak Lulus' if (int(db_antrian[3, i]) == 1) else 'Belum Tes', size_hint_x= 0.08),
                         MDLabel(text=f"{db_antrian[4, i]}", size_hint_x= 0.12),
                         MDLabel(text=f"{db_merk[np.where(db_merk == db_antrian[5, i])[0][0],1]}", size_hint_x= 0.08),
                         MDLabel(text=f"{db_antrian[6, i]}", size_hint_x= 0.05),
