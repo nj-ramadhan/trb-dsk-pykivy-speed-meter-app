@@ -1,3 +1,5 @@
+from kivy.config import Config
+Config.set('kivy', 'keyboard_mode', 'systemanddock')
 from kivy.clock import Clock
 from kivy.lang import Builder
 from kivy.core.window import Window
@@ -224,7 +226,7 @@ class ScreenMain(MDScreen):
         count_get_data = COUNT_ACQUISITION
         
         Clock.schedule_interval(self.regular_update_display, 1)
-        Clock.schedule_interval(self.regular_update_connection, 10)
+        Clock.schedule_interval(self.regular_update_connection, UPDATE_CONNECTION_INTERVAL)
         self.exec_reload_database()
         self.exec_reload_table()
 
@@ -358,7 +360,7 @@ class ScreenMain(MDScreen):
             toast_msg = f'Error Update Display: {e}'
             toast(toast_msg)       
 
-    def regular_update_connection(self, UPDATE_CONNECTION_INTERVAL):
+    def regular_update_connection(self, dt):
         global flag_conn_stat
 
         try:
