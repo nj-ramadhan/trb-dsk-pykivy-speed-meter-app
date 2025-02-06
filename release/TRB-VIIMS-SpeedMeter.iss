@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "VIIMS - Speed Meter Application"
-#define MyAppVersion "1.8.250119"
+#define MyAppVersion "1.9.250206"
 #define MyAppPublisher "PT. Tiga Ratu Berkarya"
 #define MyAppExeName "TRB-VIIMS-SpeedMeterApp.exe"
 #define MyAppAssocName "VIIMS - Speed Meter Application Files"
