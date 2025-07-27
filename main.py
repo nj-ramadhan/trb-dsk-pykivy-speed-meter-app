@@ -111,6 +111,8 @@ class ScreenHome(MDScreen):
         Clock.schedule_once(self.delayed_init, 1)
     
     def delayed_init(self, dt):
+        self.ids.lb_title.text = APP_TITLE
+        self.ids.lb_subtitle.text = APP_SUBTITLE        
         self.ids.img_pemkab.source = f'assets/images/{IMG_LOGO_PEMKAB}'
         self.ids.img_dishub.source = f'assets/images/{IMG_LOGO_DISHUB}'
         self.ids.lb_pemkab.text = LB_PEMKAB
@@ -129,6 +131,7 @@ class ScreenHome(MDScreen):
             self.ids.carousel.index += 1
             
         except Exception as e:
+            toast_msg = f'Gagal Memperbaharui Tampilan Carousel'
             toast_msg = f'Error Update Carousel: {e}'
             toast(toast_msg)                
 
@@ -149,16 +152,18 @@ class ScreenHome(MDScreen):
                 toast(f"Anda sudah login sebagai {dt_user}")
 
         except Exception as e:
-            toast_msg = f'Error Navigate to Login Screen: {e}'
-            toast(toast_msg)     
+            toast_msg = f'Terjadi kesalahan saat berpindah ke halaman Login'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")  
 
     def exec_navigate_main(self):
         try:
             self.screen_manager.current = 'screen_main'
 
         except Exception as e:
-            toast_msg = f'Error Navigate to Main Screen: {e}'
-            toast(toast_msg)    
+            toast_msg = f'Terjadi kesalahan saat berpindah ke halaman Utama'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")  
 
 class ScreenLogin(MDScreen):
     def __init__(self, **kwargs):
@@ -166,6 +171,8 @@ class ScreenLogin(MDScreen):
         Clock.schedule_once(self.delayed_init, 1)
     
     def delayed_init(self, dt):
+        self.ids.lb_title.text = APP_TITLE
+        self.ids.lb_subtitle.text = APP_SUBTITLE  
         self.ids.img_pemkab.source = f'assets/images/{IMG_LOGO_PEMKAB}'
         self.ids.img_dishub.source = f'assets/images/{IMG_LOGO_DISHUB}'
         self.ids.lb_pemkab.text = LB_PEMKAB
@@ -202,10 +209,14 @@ class ScreenLogin(MDScreen):
             db_users = np.array(myresult).T
             
             if myresult is None:
-                toast('Gagal Masuk, Nama Pengguna atau Password Salah')
+                toast_msg = f'Gagal Masuk, Nama Pengguna atau Password Salah'
+                toast(toast_msg) 
+                Logger.warning(f"{self.name}: {toast_msg}") 
             else:
                 toast_msg = f'Berhasil Masuk, Selamat Datang {myresult[1]}'
                 toast(toast_msg)
+                Logger.info(f"{self.name}: {toast_msg}")  
+
                 dt_id_user = myresult[0]
                 dt_user = myresult[1]
                 dt_foto_user = myresult[4]
@@ -215,15 +226,17 @@ class ScreenLogin(MDScreen):
 
         except Exception as e:
             toast_msg = f'Gagal masuk, silahkan isi nama user dan password yang sesuai'
-            toast(toast_msg)
+            toast(toast_msg)  
+            Logger.error(f"{self.name}: {toast_msg}, {e}")  
 
     def exec_navigate_home(self):
         try:
             self.screen_manager.current = 'screen_home'
 
         except Exception as e:
-            toast_msg = f'Error Navigate to Home Screen: {e}'
-            toast(toast_msg)        
+            toast_msg = f'Gagal Berpindah ke Halaman Awal'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")
 
     def exec_navigate_login(self):
         global dt_user
@@ -231,31 +244,36 @@ class ScreenLogin(MDScreen):
             if (dt_user == ""):
                 self.screen_manager.current = 'screen_login'
             else:
-                toast(f"Anda sudah login sebagai {dt_user}")
+                toast_msg = f"Anda sudah login sebagai {dt_user}"
+                toast(toast_msg)
+                Logger.info(f"{self.name}: {toast_msg}")  
 
         except Exception as e:
-            toast_msg = f'Error Navigate to Login Screen: {e}'
-            toast(toast_msg)     
+            toast_msg = f'Gagal Berpindah ke Halaman Login'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")  
 
     def exec_navigate_main(self):
         try:
             self.screen_manager.current = 'screen_main'
 
         except Exception as e:
-            toast_msg = f'Error Navigate to Main Screen: {e}'
-            toast(toast_msg)   
+            toast_msg = f'Gagal Berpindah ke Halaman Utama'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}") 
 
 class ScreenMain(MDScreen):   
     def __init__(self, **kwargs):
         super(ScreenMain, self).__init__(**kwargs)
         global flag_conn_stat, flag_play, flag_cylinder
+        global count_starting, count_get_data
         global dt_user, dt_foto_user, dt_no_antri, dt_no_pol, dt_no_uji, dt_sts_uji, dt_nama
         global dt_merk, dt_type, dt_jns_kend, dt_jbb, dt_brt_ksg, dt_bhn_bkr, dt_warna, dt_chasis, dt_no_mesin
         global dt_id_user
         global dt_speed_flag, dt_speed_value
         global dt_sideslip_flag, dt_sideslip_value
         global dt_dash_pendaftaran, dt_dash_belum_uji, dt_dash_sudah_uji
-        global count_starting, count_get_data
+        
 
         count_starting = COUNT_STARTING_SPEED
         count_get_data = COUNT_ACQUISITION_SPEED
@@ -270,7 +288,9 @@ class ScreenMain(MDScreen):
 
         Clock.schedule_once(self.delayed_init, 1)            
 
-    def delayed_init(self, dt):        
+    def delayed_init(self, dt):   
+        self.ids.lb_title.text = APP_TITLE
+        self.ids.lb_subtitle.text = APP_SUBTITLE              
         self.ids.img_pemkab.source = f'assets/images/{IMG_LOGO_PEMKAB}'
         self.ids.img_dishub.source = f'assets/images/{IMG_LOGO_DISHUB}'
         self.ids.lb_pemkab.text = LB_PEMKAB
@@ -471,17 +491,18 @@ class ScreenMain(MDScreen):
             screen_sideslip_meter.ids.lb_operator.text = f'Login Sebagai: \n{dt_user}' if dt_user != '' else 'Silahkan Login'
 
             if dt_user != '':
-                self.ids.img_user.source = f'https://dishub.sorongkab.go.id/ujikir/foto_user/{dt_foto_user}'
-                screen_home.ids.img_user.source = f'https://dishub.sorongkab.go.id/ujikir/foto_user/{dt_foto_user}'
-                screen_login.ids.img_user.source = f'https://dishub.sorongkab.go.id/ujikir/foto_user/{dt_foto_user}'
+                self.ids.img_user.source = f'https://{FTP_HOST}/ujikir/foto_user/{dt_foto_user}'
+                screen_home.ids.img_user.source = f'https://{FTP_HOST}/ujikir/foto_user/{dt_foto_user}'
+                screen_login.ids.img_user.source = f'https://{FTP_HOST}/ujikir/foto_user/{dt_foto_user}'
             else:
                 self.ids.img_user.source = 'assets/images/icon-login.png'
                 screen_home.ids.img_user.source = 'assets/images/icon-login.png'
                 screen_login.ids.img_user.source = 'assets/images/icon-login.png'
 
         except Exception as e:
-            toast_msg = f'Error Update Display: {e}'
-            toast(toast_msg)       
+            toast_msg = f'Gagal Memperbaharui Tampilan'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")
 
     def regular_update_connection(self, dt):
         global flag_conn_stat
@@ -492,8 +513,9 @@ class ScreenMain(MDScreen):
             MODBUS_CLIENT.close()     
             
         except Exception as e:
-            toast_msg = f'{e}'
-            toast(toast_msg)   
+            toast_msg = f'Gagal Memperbaharui Koneksi'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")  
             flag_conn_stat = False
 
     def unsigned_to_signed(self, val):
@@ -526,16 +548,18 @@ class ScreenMain(MDScreen):
                 dt_sideslip_value = np.round(sideslip_registers.registers[0] / 10, 2)
                 
         except Exception as e:
-            toast_msg = f'Error GEt Data: {e}'
-            print(toast_msg)   
+            toast_msg = f'Gagal Mengambil Data dari PLC'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")
 
     def exec_reload_database(self):
         global mydb
         try:
             mydb = mysql.connector.connect(host = DB_HOST,user = DB_USER,password = DB_PASSWORD, database = DB_NAME)
         except Exception as e:
-            toast_msg = f'Error Initiate Database: {e}'
-            toast(toast_msg)   
+            toast_msg = f'Gagal Menginisiasi Database'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}") 
 
     def exec_reload_table(self):
         global mydb, db_antrian, db_merk, db_bahan_bakar, db_warna
@@ -548,9 +572,10 @@ class ScreenMain(MDScreen):
             delete_query = f"DELETE FROM {TB_DATA} WHERE DATE(tgl_daftar) != %s"
             tb_antrian.execute(delete_query, (today,))
             mydb.commit()
-            toast_msg = f'Success Delete Expired Database'
+            toast_msg = f'Berhasil menghapus data kemarin'
         except Exception as e:
-            toast_msg = f'Error Delete Expired Database: {e}'
+            toast_msg = f'Gagal menghapus data kemarin'
+            toast(toast_msg)
             Logger.error(f"{self.name}: {toast_msg}, {e}")  
 
         try:
@@ -586,15 +611,17 @@ class ScreenMain(MDScreen):
                 dt_dash_belum_uji = np.where(db_pendaftaran[:,11] == 0)[0].size
                 dt_dash_sudah_uji = np.where(db_pendaftaran[:,11] == 1)[0].size + np.where(db_pendaftaran[:,11] == 2)[0].size
         except Exception as e:
-            toast_msg = f'Error Fetch Database: {e}'
-            print(toast_msg)
+            toast_msg = f'Gagal mengambil data antrian harian'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")  
         
         try:
             layout_list = self.ids.layout_list
             layout_list.clear_widgets(children=None)
         except Exception as e:
-            toast_msg = f'Error Remove Widget: {e}'
-            print(toast_msg)
+            toast_msg = f'Gagal menghapus widget tabel'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")   
         
         try:
             layout_list = self.ids.layout_list
@@ -623,15 +650,15 @@ class ScreenMain(MDScreen):
                         height=dp(int(60 * 800 / window_size_y)),
                         )
                     )
-
         except Exception as e:
-            toast_msg = f'Error Reload Table: {e}'
-            print(toast_msg)
+            toast_msg = f'Gagal reload tabel'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")  
 
     def on_antrian_row_press(self, instance):
         global mydb, db_antrian, db_merk, db_bahan_bakar, db_warna
         global dt_no_antri, dt_no_pol, dt_no_uji, dt_sts_uji
-        global dt_merk, dt_type, dt_jns_kend, dt_jbb, dt_brt_ksg, dt_bhn_bkr, dt_warna, dt_speed_flag
+        global dt_merk, dt_type, dt_jns_kend, dt_jbb, dt_brt_ksg, dt_bhn_bkr, dt_warna, dt_speed_flag, dt_sideslip_flag
         global dt_id_user, dt_foto_user
 
         try:
@@ -648,13 +675,14 @@ class ScreenMain(MDScreen):
             dt_bhn_bkr              = db_antrian[9, row]
             dt_warna                = db_antrian[10, row]
             dt_speed_flag           = db_antrian[11, row]
-            dt_sideslip_flag           = db_antrian[12, row]
+            dt_sideslip_flag        = db_antrian[12, row]
 
             self.exec_navigate_menu()
 
         except Exception as e:
-            toast_msg = f'Error Execute Command from Table Row: {e}'
-            toast(toast_msg)          
+            toast_msg = f'Gagal mengeksekusi perintah dari baris tabel'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")          
 
     def exec_logout(self):
         global dt_user
@@ -667,8 +695,9 @@ class ScreenMain(MDScreen):
             self.screen_manager.current = 'screen_home'
 
         except Exception as e:
-            toast_msg = f'Error Navigate to Home Screen: {e}'
-            toast(toast_msg)        
+            toast_msg = f'Terjadi kesalahan saat berpindah ke halaman Beranda'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")   
 
     def exec_navigate_login(self):
         global dt_user
@@ -676,11 +705,14 @@ class ScreenMain(MDScreen):
             if (dt_user == ""):
                 self.screen_manager.current = 'screen_login'
             else:
-                toast(f"Anda sudah login sebagai {dt_user}")
+                toast_msg = f"Anda sudah login sebagai {dt_user}"
+                toast(toast_msg)
+                Logger.info(f"{self.name}: {toast_msg}")
 
         except Exception as e:
-            toast_msg = f'Error Navigate to Login Screen: {e}'
-            toast(toast_msg)    
+            toast_msg = f'Terjadi kesalahan saat berpindah ke halaman Login'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")      
 
     def exec_navigate_menu(self):
         global dt_speed_flag, dt_sideslip_flag, dt_no_antri, dt_user
@@ -732,8 +764,9 @@ class ScreenMain(MDScreen):
             self.screen_manager.current = 'screen_main'
 
         except Exception as e:
-            toast_msg = f'Error Navigate to Main Screen: {e}'
-            toast(toast_msg)   
+            toast_msg = f'Terjadi kesalahan saat berpindah ke halaman Utama'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")    
 
 class ScreenCalibration(MDScreen):
     def __init__(self, **kwargs):
@@ -833,7 +866,7 @@ class ScreenCalibration(MDScreen):
             self.screen_manager.current = 'screen_main'
 
         except Exception as e:
-            toast_msg = f'Error Navigate to Main Screen: {e}'
+            toast_msg = f'Terjadi kesalahan saat berpindah ke halaman Utama'
             toast(toast_msg)
             Logger.error(f"{self.name}: {toast_msg}, {e}")  
 
@@ -868,35 +901,29 @@ class ScreenAddData(MDScreen):
             Logger.error(f"{self.name}: {toast_msg}, {e}")  
 
     def exec_register(self):
+        global mydb, db_users, db_merk, db_bahan_bakar, db_warna
+        global dt_id_user, dt_user, dt_foto_user
+        global dt_dash_pendaftaran
+        global dt_temp_no_uji, dt_temp_no_uji_new, dt_temp_no_wilayah, dt_temp_no_kendaraan, dt_temp_no_plat, dt_temp_no_pol
+        global dt_temp_nama, dt_temp_no_hp, dt_temp_alamat, dt_temp_id_izin, dt_temp_wilayah, dt_temp_provinsi, dt_temp_kabupaten_kota, dt_temp_kecamatan
+        global dt_temp_id_merk, dt_temp_id_subjenis, dt_temp_type, dt_temp_tahun_buat, dt_temp_silinder, dt_temp_warna, dt_temp_chasis, dt_temp_mesin, dt_temp_warna_plat
+        global dt_temp_bhn_bkr, dt_temp_jbb, dt_temp_brt_ksg, dt_temp_daya_motor, dt_temp_tgl_uji_terakhir, dt_temp_tgl_uji_habis, dt_temp_status_uji, dt_temp_status_penerbitan, dt_temp_jenis_kendaraan, dt_temp_kode_jenis_kendaraan, dt_temp_kode_wilayah
+
+        dt_tgl_baru_uji = str(time.strftime("%Y/%m/%d %H:%M:%S", time.localtime()))
+
         try:
-            # Get the last noantrian
             mycursor = mydb.cursor()
-            mycursor.execute(f"SELECT MAX(noantrian) FROM {TB_DATA}")
-            result = mycursor.fetchone()
-            last_noantrian = int(result[0]) if result[0] is not None else 0
-            noantrian = f"{last_noantrian + 1:04d}"
-
-            nopol = self.ids.tx_nopol.text
-            nouji = self.ids.tx_nouji.text
-            merk = self.ids.tx_merk.text
-            tipe = self.ids.tx_type.text
-            idjeniskendaraan = self.ids.tx_idjeniskendaraan.text
-            jbb = self.ids.tx_jbb.text
-            berat_kosong = self.ids.tx_berat_kosong.text
-            warna = self.ids.tx_warna.text
-
-            mycursor = mydb.cursor()
-            sql = f"INSERT INTO {TB_DATA} (noantrian, nopol, nouji, NEW_NOUJI, merk, type, idjeniskendaraan, jbb, berat_kosong, warna) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-            values = (noantrian, nopol, nouji, nouji, merk, tipe, idjeniskendaraan, jbb, berat_kosong, warna)
-            mycursor.execute(sql, values)
+            sql = f"INSERT INTO {TB_DATA_MASTER} (NOUJI, NEW_NOUJI, NOPOL, MERK_ID, TYPE, idjeniskendaraan, kd_jnskendaraan, WLY, SUBJENIS_ID, JBB, BERATKOSONG, BHN_BAKAR, WARNA_KEND, STATUSUJI, statuspenerbitan, PLAT, NOKDR, NOWIL, TGL_UJI_TERAKHIR) VALUES ('{dt_temp_no_uji}','{dt_temp_no_uji_new}','{dt_temp_no_pol}','{dt_temp_id_merk}','{dt_temp_type}','{dt_temp_jenis_kendaraan}','{dt_temp_kode_jenis_kendaraan}','{dt_temp_kode_wilayah}','{dt_temp_id_subjenis}','{dt_temp_jbb}','{dt_temp_brt_ksg}','{dt_temp_bhn_bkr}','{dt_temp_warna}','{dt_temp_status_uji}','{dt_temp_status_penerbitan}','{dt_temp_no_wilayah}','{dt_temp_no_kendaraan}','{dt_temp_no_plat}','{dt_tgl_baru_uji}')"
+            mycursor.execute(sql)
             mydb.commit()
 
             toast("Data berhasil didaftarkan")
             self.screen_manager.current = 'screen_main'
 
         except Exception as e:
-            toast_msg = f'Terjadi kesalahan saat mendaftar: {e}'
-            toast(f"Terjadi kesalahan saat mendaftar: {e}")
+            toast_msg = f'Terjadi kesalahan saat mendaftar'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}") 
 
 class ScreenAddQueue(MDScreen):
     def __init__(self, **kwargs):
@@ -929,7 +956,7 @@ class ScreenAddQueue(MDScreen):
             dt_temp_no_uji = dt_temp_no_uji_new = dt_temp_no_wilayah = dt_temp_no_kendaraan = dt_temp_no_plat = dt_temp_no_pol = ""
             dt_temp_nama = dt_temp_no_hp = dt_temp_alamat = dt_temp_id_izin = dt_temp_wilayah = dt_temp_provinsi = dt_temp_kabupaten_kota = dt_temp_kecamatan = ""
             dt_temp_id_merk = dt_temp_id_subjenis = dt_temp_type = dt_temp_tahun_buat = dt_temp_silinder = dt_temp_warna = dt_temp_chasis = dt_temp_mesin = dt_temp_warna_plat = ""
-            dt_temp_bhn_bkr = dt_temp_jbb = dt_temp_brt_ksg = dt_temp_daya_motor = dt_temp_tgl_uji_terakhir = dt_temp_tgl_uji_habis = dt_temp_status_uji = dt_temp_status_penerbitan = dt_temp_jenis_kendaraan = dt_temp_kode_jenis_kendaraan = dt_temp_kode_wilayah = ""
+            dt_temp_bhn_bkr = dt_temp_jbb = dt_temp_daya_motor = dt_temp_tgl_uji_terakhir = dt_temp_tgl_uji_habis = dt_temp_status_uji = dt_temp_status_penerbitan = dt_temp_jenis_kendaraan = dt_temp_kode_jenis_kendaraan = dt_temp_kode_wilayah = ""
 
             self.ids.tx_nopol.text = "" 
             self.ids.tx_nouji.text = "" 
@@ -944,7 +971,7 @@ class ScreenAddQueue(MDScreen):
         except Exception as e:
             toast_msg = f'Gagal Memuat Data'
             toast(toast_msg)
-            print(toast_msg, e)
+            Logger.error(f"{self.name}: {toast_msg}, {e}") 
 
     def exec_find(self):
         global mydb, db_users, db_merk, db_bahan_bakar, db_warna
@@ -1068,7 +1095,6 @@ class ScreenAddQueue(MDScreen):
             toast(toast_msg)
             print(toast_msg, e)
 
-
     def exec_register(self):
         global mydb, db_users, db_merk, db_bahan_bakar, db_warna
         global dt_id_user, dt_user, dt_foto_user
@@ -1078,16 +1104,30 @@ class ScreenAddQueue(MDScreen):
         global dt_temp_id_merk, dt_temp_id_subjenis, dt_temp_type, dt_temp_tahun_buat, dt_temp_silinder, dt_temp_warna, dt_temp_chasis, dt_temp_mesin, dt_temp_warna_plat
         global dt_temp_bhn_bkr, dt_temp_jbb, dt_temp_brt_ksg, dt_temp_daya_motor, dt_temp_tgl_uji_terakhir, dt_temp_tgl_uji_habis, dt_temp_status_uji, dt_temp_status_penerbitan, dt_temp_jenis_kendaraan, dt_temp_kode_jenis_kendaraan, dt_temp_kode_wilayah
 
-        dt_tgl_baru_uji = str(time.strftime("%Y/%m/%d %H:%M:%S", time.localtime()))
-        dt_temp_no_antrian = dt_dash_pendaftaran + 1
-
         try:
             mycursor = mydb.cursor()
-            sql = f"INSERT INTO {TB_DATA} (noantrian, nouji, NEW_NOUJI, nopol, merk, type, idjeniskendaraan, kd_jnskendaraan, kodewilayah, jenis, jbb, berat_kosong, bahan_bakar, warna, statusuji, statuspenerbitan, kode_daerah, no_kendaraan, kode_huruf, tgl_daftar, user, check_flag) VALUES ('{dt_temp_no_antrian:04d}','{dt_temp_no_uji}','{dt_temp_no_uji_new}','{dt_temp_no_pol}','{dt_temp_id_merk}','{dt_temp_type}','{dt_temp_jenis_kendaraan}','{dt_temp_kode_jenis_kendaraan}','{dt_temp_kode_wilayah}','{dt_temp_id_subjenis}','{dt_temp_jbb}','{dt_temp_brt_ksg}','{dt_temp_bhn_bkr}','{dt_temp_warna}','{dt_temp_status_uji}','{dt_temp_status_penerbitan}','{dt_temp_no_wilayah}','{dt_temp_no_kendaraan}','{dt_temp_no_plat}','{dt_tgl_baru_uji}','{dt_user}','0')"
-            mycursor.execute(sql)
+            mycursor.execute(f"SELECT MAX(noantrian) FROM {TB_DATA}")
+            result = mycursor.fetchone()
+            last_noantrian = int(result[0]) if result[0] is not None else 0
+            noantrian = f"{last_noantrian + 1:04d}"
+
+            nopol = self.ids.tx_nopol.text
+            nouji = self.ids.tx_nouji.text
+            merk = self.ids.tx_merk.text
+            tipe = self.ids.tx_type.text
+            idjeniskendaraan = self.ids.tx_idjeniskendaraan.text
+            jbb = self.ids.tx_jbb.text
+            berat_kosong = self.ids.tx_berat_kosong.text
+            warna = self.ids.tx_warna.text
+
+            mycursor = mydb.cursor()
+            sql = f"INSERT INTO {TB_DATA} (noantrian, nopol, nouji, NEW_NOUJI, merk, type, idjeniskendaraan, jbb, berat_kosong, warna) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+            values = (noantrian, nopol, nouji, nouji, merk, tipe, idjeniskendaraan, jbb, berat_kosong, warna)
+            mycursor.execute(sql, values)
             mydb.commit()
+
         except Exception as e:
-            toast_msg = f'Gagal Mambuat Data Tabel Antrian Baru'
+            toast_msg = f'Gagal menambah data antrian baru'
             toast(toast_msg)
             print(toast_msg, e)
 
@@ -1205,6 +1245,8 @@ class ScreenSpeedMeter(MDScreen):
         Clock.schedule_once(self.delayed_init, 1)
     
     def delayed_init(self, dt):
+        self.ids.lb_title.text = APP_TITLE
+        self.ids.lb_subtitle.text = APP_SUBTITLE          
         self.ids.img_pemkab.source = f'assets/images/{IMG_LOGO_PEMKAB}'
         self.ids.img_dishub.source = f'assets/images/{IMG_LOGO_DISHUB}'
         self.ids.lb_pemkab.text = LB_PEMKAB
@@ -1215,7 +1257,7 @@ class ScreenSpeedMeter(MDScreen):
     def on_enter(self):
         global db_merk, db_bahan_bakar, db_warna
         global dt_no_antri, dt_no_pol, dt_no_uji, dt_sts_uji
-        global dt_merk, dt_type, dt_jns_kend, dt_jbb, dt_brt_ksg, dt_bhn_bkr, dt_warna, dt_speed_flag
+        global dt_merk, dt_type, dt_jns_kend, dt_jbb, dt_brt_ksg, dt_warna, dt_load_flag, dt_brake_flag, dt_handbrake_flag
 
         self.ids.lb_no_antri.text = str(dt_no_antri)
         self.ids.lb_no_pol.text = str(dt_no_pol)
@@ -1225,8 +1267,7 @@ class ScreenSpeedMeter(MDScreen):
         self.ids.lb_type.text = str(dt_type)
         self.ids.lb_jns_kend.text = str(dt_jns_kend)
         self.ids.lb_jbb.text = str(dt_jbb)
-        self.ids.lb_brt_ksg.text = str(dt_brt_ksg)
-        self.ids.lb_bhn_bkr.text = '-' if dt_bhn_bkr == None else f"{db_bahan_bakar[np.where(db_bahan_bakar == dt_bhn_bkr)[0][0],1]}"
+        self.ids.lb_bhn_bkr.text = '-' if dt_brt_ksg == None else f"{db_bahan_bakar[np.where(db_bahan_bakar == dt_brt_ksg)[0][0],1]}"
         self.ids.lb_warna.text = '-' if dt_warna == None else f"{db_warna[np.where(db_warna == dt_warna)[0][0],1]}"
 
         self.exec_start_speed()
