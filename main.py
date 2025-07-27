@@ -1257,7 +1257,7 @@ class ScreenSpeedMeter(MDScreen):
     def on_enter(self):
         global db_merk, db_bahan_bakar, db_warna
         global dt_no_antri, dt_no_pol, dt_no_uji, dt_sts_uji
-        global dt_merk, dt_type, dt_jns_kend, dt_jbb, dt_brt_ksg, dt_warna, dt_load_flag, dt_brake_flag, dt_handbrake_flag
+        global dt_merk, dt_type, dt_jns_kend, dt_jbb, dt_brt_ksg, dt_bhn_bkr, dt_warna, dt_speed_flag
 
         self.ids.lb_no_antri.text = str(dt_no_antri)
         self.ids.lb_no_pol.text = str(dt_no_pol)
@@ -1267,7 +1267,8 @@ class ScreenSpeedMeter(MDScreen):
         self.ids.lb_type.text = str(dt_type)
         self.ids.lb_jns_kend.text = str(dt_jns_kend)
         self.ids.lb_jbb.text = str(dt_jbb)
-        self.ids.lb_bhn_bkr.text = '-' if dt_brt_ksg == None else f"{db_bahan_bakar[np.where(db_bahan_bakar == dt_brt_ksg)[0][0],1]}"
+        self.ids.lb_brt_ksg.text = str(dt_brt_ksg)
+        self.ids.lb_bhn_bkr.text = '-' if dt_bhn_bkr == None else f"{db_bahan_bakar[np.where(db_bahan_bakar == dt_bhn_bkr)[0][0],1]}"
         self.ids.lb_warna.text = '-' if dt_warna == None else f"{db_warna[np.where(db_warna == dt_warna)[0][0],1]}"
 
         self.exec_start_speed()
