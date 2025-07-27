@@ -102,8 +102,9 @@ SENSOR_ENCODER_PPR = float(config['setting']['SENSOR_ENCODER_PPR']) # in mm
 SENSOR_LENGTH = float(config['setting']['SENSOR_LENGTH']) # in mm
 
 ## system standard
-STANDARD_MIN_SPEED = float(config['standard']['STANDARD_MIN_SPEED']) # in mm
-STANDARD_MAX_SIDE_SLIP = float(config['standard']['STANDARD_MAX_SIDE_SLIP']) # in mm
+STANDARD_MIN_SPEED = float(config['standard']['STANDARD_MIN_SPEED']) # in rpm
+STANDARD_MAX_SPEED = float(config['standard']['STANDARD_MAX_SPEED']) # in rpm
+STANDARD_MAX_SIDESLIP = float(config['standard']['STANDARD_MAX_SIDESLIP']) # in mm
 
 class ScreenHome(MDScreen):
     def __init__(self, **kwargs):
@@ -412,15 +413,15 @@ class ScreenMain(MDScreen):
                 screen_sideslip_meter.ids.lb_test_subtitle.text = "HASIL PENGUKURAN"
                 screen_sideslip_meter.ids.lb_sideslip_val.text = str(dt_speed_value)
 
-                if(dt_speed_value >= STANDARD_MIN_SPEED):
-                    screen_speed_meter.ids.lb_info.text = f"Ambang Batas Kecepatan yang diperbolehkan adalah {STANDARD_MIN_SPEED} rpm.\nDeviasi Kecepatan Kendaraan Anda DIdalam Ambang Batas"
+                if((dt_speed_value >= STANDARD_MIN_SPEED) and (dt_speed_value <= STANDARD_MAX_SPEED)):
+                    screen_speed_meter.ids.lb_info.text = f"Ambang Batas Kecepatan yang diperbolehkan adalah {STANDARD_MIN_SPEED} hingga {STANDARD_MAX_SPEED} rpm.\nDeviasi Kecepatan Kendaraan Anda Didalam Ambang Batas"
                 else:
-                    screen_speed_meter.ids.lb_info.text = f"Ambang Batas Kecepatan yang diperbolehkan adalah {STANDARD_MIN_SPEED} rpm.\nDeviasi Kecepatan Kendaraan Anda Diluar Ambang Batas"
+                    screen_speed_meter.ids.lb_info.text = f"Ambang Batas Kecepatan yang diperbolehkan adalah {STANDARD_MIN_SPEED} hingga {STANDARD_MAX_SPEED} rpm.\nDeviasi Kecepatan Kendaraan Anda Diluar Ambang Batas"
 
-                if((dt_sideslip_value <= STANDARD_MAX_SIDE_SLIP) and (dt_sideslip_value >= -STANDARD_MAX_SIDE_SLIP)):
-                    screen_sideslip_meter.ids.lb_info.text = f"Ambang Batas Bergesernya Roda Kendaraan adalah {STANDARD_MAX_SIDE_SLIP} mm,\nPergeseran Roda Kendaraan Anda Dalam Range Ambang Batas"
+                if((dt_sideslip_value <= STANDARD_MAX_SIDESLIP) and (dt_sideslip_value >= -STANDARD_MAX_SIDESLIP)):
+                    screen_sideslip_meter.ids.lb_info.text = f"Ambang Batas Bergesernya Roda Kendaraan adalah {STANDARD_MAX_SIDESLIP} mm,\nPergeseran Roda Kendaraan Anda Dalam Range Ambang Batas"
                 else:
-                    screen_sideslip_meter.ids.lb_info.text = f"Ambang Batas Bergesernya Roda Kendaraan adalah {STANDARD_MAX_SIDE_SLIP} mm,\nPergeseran Roda Kendaraan Anda Diluar Ambang Batas"
+                    screen_sideslip_meter.ids.lb_info.text = f"Ambang Batas Bergesernya Roda Kendaraan adalah {STANDARD_MAX_SIDESLIP} mm,\nPergeseran Roda Kendaraan Anda Diluar Ambang Batas"
 
             elif(count_starting > 0):
                 if(flag_play):
@@ -434,7 +435,7 @@ class ScreenMain(MDScreen):
 
             if(count_get_data <= 0):
                 if(not flag_play):
-                    if(dt_speed_value >= STANDARD_MIN_SPEED):
+                    if((dt_speed_value >= STANDARD_MIN_SPEED) and (dt_speed_value <= STANDARD_MAX_SPEED)):
                         screen_speed_meter.ids.lb_test_result.md_bg_color = colors['Green']['200']
                         screen_speed_meter.ids.lb_test_result.text = "LULUS"
                         dt_speed_flag = "Lulus"
@@ -445,7 +446,7 @@ class ScreenMain(MDScreen):
                         dt_speed_flag = "Tidak Lulus"
                         screen_speed_meter.ids.lb_test_result.text_color = colors['Red']['A700']
 
-                    if((dt_sideslip_value <= STANDARD_MAX_SIDE_SLIP) and (dt_sideslip_value >= -STANDARD_MAX_SIDE_SLIP)):
+                    if((dt_sideslip_value <= STANDARD_MAX_SIDESLIP) and (dt_sideslip_value >= -STANDARD_MAX_SIDESLIP)):
                         screen_sideslip_meter.ids.lb_test_result.md_bg_color = colors['Green']['200']
                         screen_sideslip_meter.ids.lb_test_result.text = "LULUS"
                         dt_sideslip_flag = "Lulus"
