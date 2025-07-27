@@ -1245,8 +1245,6 @@ class ScreenSpeedMeter(MDScreen):
         Clock.schedule_once(self.delayed_init, 1)
     
     def delayed_init(self, dt):
-        self.ids.lb_title.text = APP_TITLE
-        self.ids.lb_subtitle.text = APP_SUBTITLE          
         self.ids.img_pemkab.source = f'assets/images/{IMG_LOGO_PEMKAB}'
         self.ids.img_dishub.source = f'assets/images/{IMG_LOGO_DISHUB}'
         self.ids.lb_pemkab.text = LB_PEMKAB
@@ -1270,7 +1268,7 @@ class ScreenSpeedMeter(MDScreen):
         self.ids.lb_brt_ksg.text = str(dt_brt_ksg)
         self.ids.lb_bhn_bkr.text = '-' if dt_bhn_bkr == None else f"{db_bahan_bakar[np.where(db_bahan_bakar == dt_bhn_bkr)[0][0],1]}"
         self.ids.lb_warna.text = '-' if dt_warna == None else f"{db_warna[np.where(db_warna == dt_warna)[0][0],1]}"
-
+        
         self.exec_start_speed()
         
     def exec_cylinder_up(self):
