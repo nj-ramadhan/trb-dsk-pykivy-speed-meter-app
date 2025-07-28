@@ -862,6 +862,44 @@ class ScreenCalibration(MDScreen):
             toast(toast_msg)
             Logger.error(f"{self.name}: {toast_msg}, {e}")  
 
+    def exec_cylinder_up(self):
+        global flag_conn_stat, flag_cylinder
+
+        if(not flag_cylinder):
+            flag_cylinder = True
+        try:
+            if flag_conn_stat:
+                MODBUS_CLIENT.connect()
+                MODBUS_CLIENT.write_coil(3073, flag_cylinder, slave=1) #M1
+                MODBUS_CLIENT.close()
+        except:
+            toast("error send exec_cylinder_up data to PLC Slave") 
+
+    def exec_cylinder_down(self):
+        global flag_conn_stat, flag_cylinder
+
+        if(flag_cylinder):
+            flag_cylinder = False
+        try:
+            if flag_conn_stat:
+                MODBUS_CLIENT.connect()
+                MODBUS_CLIENT.write_coil(3074, not flag_cylinder, slave=1) #M2
+                MODBUS_CLIENT.close()
+        except:
+            toast("error send exec_cylinder_down data to PLC Slave") 
+
+    def exec_cylinder_stop(self):
+        global flag_conn_stat
+
+        try:
+            if flag_conn_stat:
+                MODBUS_CLIENT.connect()
+                MODBUS_CLIENT.write_coil(3073, False, slave=1) #M1
+                MODBUS_CLIENT.write_coil(3074, False, slave=1) #M3
+                MODBUS_CLIENT.close()
+        except:
+            toast("error send exec_cylinder_stop data to PLC Slave")   
+
     def exec_navigate_main(self):
         try:
             self.screen_manager.current = 'screen_main'
@@ -1313,31 +1351,37 @@ class ScreenSpeedMeter(MDScreen):
     def exec_start_speed(self):
         global flag_play
         global count_starting, count_get_data
+        try:
+            screen_main = self.screen_manager.get_screen('screen_main')
+            count_starting = COUNT_STARTING_SPEED
+            count_get_data = COUNT_ACQUISITION_SPEED
 
-        screen_main = self.screen_manager.get_screen('screen_main')
-
-        count_starting = COUNT_STARTING_SPEED
-        count_get_data = COUNT_ACQUISITION_SPEED
-
-        if(not flag_play):
-            Clock.schedule_interval(screen_main.regular_get_data, GET_DATA_INTERVAL)
-            flag_play = True
+            if(not flag_play):
+                Clock.schedule_interval(screen_main.regular_get_data, GET_DATA_INTERVAL)
+                flag_play = True
+        except Exception as e:
+            toast_msg = f'Terjadi kesalahan saat memulai pengujian Speedo Meter'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")  
 
     def exec_reload(self):
         global flag_play
         global count_starting, count_get_data, dt_speed_value
+        try:
+            screen_main = self.screen_manager.get_screen('screen_main')
+            count_starting = COUNT_STARTING_SPEED
+            count_get_data = COUNT_ACQUISITION_SPEED
+            dt_speed_value = 0
+            self.ids.bt_reload.disabled = True
+            self.ids.lb_speed_val.text = "..."
 
-        screen_main = self.screen_manager.get_screen('screen_main')
-
-        count_starting = COUNT_STARTING_SPEED
-        count_get_data = COUNT_ACQUISITION_SPEED
-        dt_speed_value = 0
-        self.ids.bt_reload.disabled = True
-        self.ids.lb_speed_val.text = "..."
-
-        if(not flag_play):
-            Clock.schedule_interval(screen_main.regular_get_data, GET_DATA_INTERVAL)
-            flag_play = True
+            if(not flag_play):
+                Clock.schedule_interval(screen_main.regular_get_data, GET_DATA_INTERVAL)
+                flag_play = True
+        except Exception as e:
+            toast_msg = f'Terjadi kesalahan saat memulai ulang pengujian Speedo Meter'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")  
 
     def exec_save(self):
         global mydb, db_antrian
@@ -1345,7 +1389,6 @@ class ScreenSpeedMeter(MDScreen):
         global dt_speed_flag, dt_speed_value, dt_id_user
 
         self.ids.bt_save.disabled = True
-
         try:
             tb_speed_data = mydb.cursor()
             sql = f"UPDATE {TB_DATA} SET speed_flag = %s, speed_value = %s, speed_user = %s, speed_post = %s WHERE noantrian = %s"
@@ -1356,22 +1399,23 @@ class ScreenSpeedMeter(MDScreen):
             mydb.commit()
             self.open_screen_main()
         except Exception as e:
-            toast_msg = f'Gagal menyimpan data speed ke Tabel Cek Ident: {e}'
+            toast_msg = f'Gagal menyimpan data speed ke tabel antrian'
             toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")  
 
     def open_screen_main(self):
         global flag_play        
         global count_starting, count_get_data
 
         try:
-            screen_main = self.screen_manager.get_screen('screen_main')
             count_starting = COUNT_STARTING_SPEED
             count_get_data = COUNT_ACQUISITION_SPEED
             flag_play = False
             self.screen_manager.current = 'screen_menu'
         except Exception as e:
-            toast_msg = f'Gagal Berpindah halaman ke Menu: {e}'
+            toast_msg = f'Gagal Berpindah halaman ke Menu'
             toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")  
 
 class ScreenSideSlipMeter(MDScreen):        
     def __init__(self, **kwargs):
@@ -1408,32 +1452,39 @@ class ScreenSideSlipMeter(MDScreen):
     def exec_start_sideslip(self):
         global flag_play
         global count_starting, count_get_data
+        try:
+            screen_main = self.screen_manager.get_screen('screen_main')
 
-        screen_main = self.screen_manager.get_screen('screen_main')
+            count_starting = COUNT_STARTING_SIDESLIP
+            count_get_data = COUNT_ACQUISITION_SIDESLIP
 
-        count_starting = COUNT_STARTING_SIDESLIP
-        count_get_data = COUNT_ACQUISITION_SIDESLIP
+            if(not flag_play):
+                Clock.schedule_interval(screen_main.regular_get_data, GET_DATA_INTERVAL)
+                flag_play = True            
+        except Exception as e:
+            toast_msg = f'Terjadi kesalahan saat memulai pengujian Sideslip'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")  
 
-        if(not flag_play):
-            Clock.schedule_interval(screen_main.regular_get_data, GET_DATA_INTERVAL)
-            flag_play = True
 
     def exec_reload(self):
         global flag_play
-        global count_starting, count_get_data, dt_sideslip_value, db_side_slip_value
+        global count_starting, count_get_data, dt_sideslip_value
+        try:
+            screen_main = self.screen_manager.get_screen('screen_main')
+            count_starting = COUNT_STARTING_SIDESLIP
+            count_get_data = COUNT_ACQUISITION_SIDESLIP
+            dt_sideslip_value = 0
+            self.ids.bt_reload.disabled = True
+            self.ids.lb_sideslip_val.text = "..."
 
-        screen_main = self.screen_manager.get_screen('screen_main')
-
-        count_starting = COUNT_STARTING_SIDESLIP
-        count_get_data = COUNT_ACQUISITION_SIDESLIP
-        db_side_slip_value = np.array([0.0])
-        dt_sideslip_value = 0
-        self.ids.bt_reload.disabled = True
-        self.ids.lb_sideslip.text = "..."
-
-        if(not flag_play):
-            Clock.schedule_interval(screen_main.regular_get_data, GET_DATA_INTERVAL)
-            flag_play = True
+            if(not flag_play):
+                Clock.schedule_interval(screen_main.regular_get_data, GET_DATA_INTERVAL)
+                flag_play = True          
+        except Exception as e:
+            toast_msg = f'Terjadi kesalahan saat memulai ulang pengujian Sideslip'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")  
 
     def exec_save(self):
         global flag_play
@@ -1443,17 +1494,19 @@ class ScreenSideSlipMeter(MDScreen):
         global dt_sideslip_flag, dt_sideslip_value, dt_id_user
 
         self.ids.bt_save.disabled = True
-
-        mycursor = mydb.cursor()
-
-        sql = f"UPDATE {TB_DATA} SET sideslip_flag = %s, sideslip_value = %s, sideslip_user = %s, sideslip_post = %s WHERE noantrian = %s"
-        sql_sideslip_flag = (1 if dt_sideslip_flag == "Lulus" else 2)
-        dt_sideslip_post = str(time.strftime("%Y/%m/%d %H:%M:%S", time.localtime()))
-        sql_val = (sql_sideslip_flag, dt_sideslip_value, dt_id_user, dt_sideslip_post, dt_no_antri)
-        mycursor.execute(sql, sql_val)
-        mydb.commit()
-
-        self.open_screen_main()
+        try:
+            tb_sideslip_data = mydb.cursor()
+            sql = f"UPDATE {TB_DATA} SET sideslip_flag = %s, sideslip_value = %s, sideslip_user = %s, sideslip_post = %s WHERE noantrian = %s"
+            sql_sideslip_flag = (1 if dt_sideslip_flag == "Lulus" else 2)
+            now = str(time.strftime("%Y/%m/%d %H:%M:%S", time.localtime()))
+            sql_val = (sql_sideslip_flag, dt_sideslip_value, dt_id_user, now, dt_no_antri)
+            tb_sideslip_data.execute(sql, sql_val)
+            mydb.commit()
+            self.open_screen_main()
+        except Exception as e:
+            toast_msg = f'Gagal menyimpan data speed ke tabel antrian'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}") 
 
     def open_screen_main(self):
         global flag_play        
