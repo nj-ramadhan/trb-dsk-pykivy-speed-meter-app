@@ -92,6 +92,14 @@ UPDATE_CAROUSEL_INTERVAL = float(config['setting']['UPDATE_CAROUSEL_INTERVAL'])
 UPDATE_CONNECTION_INTERVAL = float(config['setting']['UPDATE_CONNECTION_INTERVAL'])
 GET_DATA_INTERVAL = float(config['setting']['GET_DATA_INTERVAL'])
 
+PRINTER_THERM_COM = str(config['setting']['PRINTER_THERM_COM'])
+PRINTER_THERM_BAUD = int(config['setting']['PRINTER_THERM_BAUD'])
+PRINTER_THERM_BYTESIZE = int(config['setting']['PRINTER_THERM_BYTESIZE'])
+PRINTER_THERM_PARITY = str(config['setting']['PRINTER_THERM_PARITY'])
+PRINTER_THERM_STOPBITS = int(config['setting']['PRINTER_THERM_STOPBITS'])
+PRINTER_THERM_TIMEOUT = float(config['setting']['PRINTER_THERM_TIMEOUT'])
+PRINTER_THERM_DSRDTR = bool(config['setting']['PRINTER_THERM_DSRDTR'])
+
 MODBUS_IP_PLC = config['setting']['MODBUS_IP_PLC']
 MODBUS_CLIENT = ModbusTcpClient(MODBUS_IP_PLC)
 REGISTER_DATA_SPEED = int(config['setting']['REGISTER_DATA_SPEED']) # 1512 = V1000
@@ -1398,11 +1406,139 @@ class ScreenSpeedMeter(MDScreen):
             tb_speed_data.execute(sql, sql_val)
             mydb.commit()
             self.open_screen_main()
+
+            self.exec_print()
+
+            self.ids.bt_save.disabled = True
+        
         except Exception as e:
-            toast_msg = f'Gagal menyimpan data speed ke tabel antrian'
+            toast_msg = f'Error Save Data'
             toast(toast_msg)
             Logger.error(f"{self.name}: {toast_msg}, {e}")  
 
+    def exec_print(self):
+        try:
+            global dt_load_flag, dt_brake_flag, dt_handbrake_flag
+            tb_status = mydb.cursor()
+            tb_status.execute(f"SELECT speed_flag FROM {TB_DATA} WHERE noantrian = '{dt_no_antri}'")
+            result_tb_status = tb_status.fetchone()
+            mydb.commit()
+            db_status = np.array(result_tb_status).T
+            dt_load_flag            = int(db_status[0])
+            
+            self.exec_print_thermal()
+            self.exec_print_pdf()
+
+            self.ids.bt_print.disabled = True
+
+        except Exception as e:
+            toast_msg = f'Gagal Mencetak Hasil Uji'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")  
+
+    def exec_print_pdf(self):
+        global flag_play
+        global count_starting, count_get_data
+        global mydb, db_antrian
+        global dt_no_antri, dt_no_pol, dt_no_uji, dt_nama, dt_jns_kend
+        global dt_speed_flag
+
+        try:
+            print_datetime = str(time.strftime("%Y/%m/%d %H:%M:%S", time.localtime()))
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_xy(0, 2)
+            pdf.image("assets/images/logo-dishub.png", w=30.0, h=0, x=20)
+            pdf.image("assets/images/logo-pandeglang.png", w=30.0, h=0, x=110)            
+            pdf.set_font('Arial', 'B', 24.0)
+            pdf.cell(ln=1, h=5.0, w=0)
+            pdf.cell(ln=1, h=15.0, align='C', w=0, txt="DINAS PERHUBUNGAN", border=0)
+            pdf.cell(ln=1, h=15.0, align='C', w=0, txt="UPTD PKB KAB. PANDEGLANG", border=0)
+            pdf.cell(ln=1, h=5.0, w=0)
+            pdf.set_font('Arial', 'B', 14.0)
+            pdf.cell(ln=0, h=10.0, align='L', w=0, txt=f"Tanggal: {print_datetime}", border=0)
+            pdf.cell(ln=1, h=10.0, align='R', w=0, txt=f"No Reg Kend: {dt_no_pol}", border=0)
+            pdf.cell(ln=0, h=10.0, align='L', w=0, txt=f"No Antrian: {dt_no_antri}", border=0)
+            pdf.cell(ln=1, h=10.0, align='R', w=0, txt=f"No Uji: {dt_no_uji}", border=0)
+            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Jenis Kendaraan: {dt_jns_kend}", border=0)
+            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Nama: {dt_nama}", border=0)
+            pdf.cell(ln=0, h=10.0, align='L', w=0, txt=f"JBB: {dt_jbb}", border=0)
+            pdf.cell(ln=1, h=10.0, align='R', w=0, txt=f"Berat Kosong: {float(dt_brt_ksg)}", border=0)
+            pdf.cell(ln=1, h=10.0, w=0)
+            pdf.set_font('Arial', '', 14.0)
+            pdf.cell(ln=1, h=10.0, align='L', w=80, txt=f"SPEEDO METER")
+            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Nilai Pengujian : {int(dt_speed_value)} kg")
+            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Status Pengujian: {'Lulus' if dt_speed_flag == 2 else 'Tidak Lulus' if dt_speed_flag == 1 else 'Belum Diuji'}")
+            pdf.cell(ln=1, h=5.0, w=0)
+
+            documents_dir = os.path.join(os.environ["USERPROFILE"], "Documents")
+
+            folder_name = f"Hasil_Uji_VIIS_Speedo_Meter_{time.strftime('%Y-%m-%d', time.localtime())}"
+            date_folder_path = os.path.join(documents_dir, folder_name)
+            
+            if not os.path.exists(date_folder_path):
+                os.makedirs(date_folder_path)
+                toast(f"Folder created: {date_folder_path}")
+            else:
+                toast(f"Folder already exists: {date_folder_path}")
+
+            pdf_filename = f"Hasil_Uji_No_{dt_no_antri}.pdf"
+            pdf_path = os.path.join(date_folder_path, pdf_filename)
+
+            pdf.output(pdf_path, 'F')
+            toast(f"PDF saved to: {pdf_path}")
+            os.startfile(pdf_path)
+
+        except Exception as e:
+            toast_msg = f'Gagal menyimpan ke pdf'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")  
+
+    def exec_print_thermal(self):
+        global flag_play
+        global count_starting, count_get_data
+        global mydb, db_antrian
+        global dt_no_antri, dt_no_pol, dt_no_uji, dt_nama, dt_jns_kend
+        global dt_speed_flag
+
+        try:
+            """ 9600 Baud, 8N1, Flow Control Enabled """
+            printer = Serial(devfile=PRINTER_THERM_COM,
+                    baudrate=PRINTER_THERM_BAUD,
+                    bytesize=PRINTER_THERM_BYTESIZE,
+                    parity=PRINTER_THERM_PARITY,
+                    stopbits=PRINTER_THERM_STOPBITS,
+                    timeout=PRINTER_THERM_TIMEOUT,
+                    dsrdtr=PRINTER_THERM_DSRDTR,)
+            print_datetime = str(time.strftime("%d %B %Y %H:%M:%S", time.localtime()))
+            
+            printer.image("assets/images/logo-dishub.png")
+            printer.image("assets/images/logo-pandeglang.png")
+            printer.textln(" \n ")
+            printer.textln("VEHICLE INSPECTION INTEGRATION SYSTEM")
+            printer.textln("SPEEDO METER")
+            printer.textln("================================================================")
+            printer.text(f"No Antrian: {dt_no_antri}\t")
+            printer.text(f"No Reg: {dt_no_pol}\t")
+            printer.textln(f"No Uji: {dt_no_uji}")
+            printer.textln("  ")
+            printer.text(f"Nama: {dt_nama}\t")
+            printer.textln(f"Jenis Kendaraan: {dt_jns_kend}")
+            printer.textln("  ")
+            printer.textln(f"Tanggal: {print_datetime}")
+            printer.textln("  ")
+            printer.textln(f"SPEEDO METER")
+            printer.textln(f"Nilai Pengujian : {dt_speed_value} rpm")
+            printer.textln(f"Status Pengujian : {'Lulus' if dt_speed_flag == 2 else 'Tidak Lulus' if dt_speed_flag == 1 else 'Belum Diuji'}")
+            printer.textln("  ")
+            printer.textln("================================================================")
+            printer.cut()
+
+        except Exception as e:
+            toast_msg = f'Gagal mencetak menggunakan Thermal Printer'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")  
+            
     def open_screen_main(self):
         global flag_play        
         global count_starting, count_get_data
@@ -1487,10 +1623,8 @@ class ScreenSideSlipMeter(MDScreen):
             Logger.error(f"{self.name}: {toast_msg}, {e}")  
 
     def exec_save(self):
-        global flag_play
-        global count_starting, count_get_data
         global mydb, db_antrian
-        global dt_no_antri, dt_no_pol, dt_no_uji, dt_nama, dt_jns_kend
+        global dt_no_antri, dt_no_pol, dt_no_uji, dt_nama
         global dt_sideslip_flag, dt_sideslip_value, dt_id_user
 
         self.ids.bt_save.disabled = True
@@ -1503,10 +1637,138 @@ class ScreenSideSlipMeter(MDScreen):
             tb_sideslip_data.execute(sql, sql_val)
             mydb.commit()
             self.open_screen_main()
+
+            self.exec_print()
+
+            self.ids.bt_save.disabled = True
+
         except Exception as e:
             toast_msg = f'Gagal menyimpan data speed ke tabel antrian'
             toast(toast_msg)
             Logger.error(f"{self.name}: {toast_msg}, {e}") 
+
+    def exec_print(self):
+        try:
+            global dt_sideslip_flag
+            tb_status = mydb.cursor()
+            tb_status.execute(f"SELECT sideslip_flag FROM {TB_DATA} WHERE noantrian = '{dt_no_antri}'")
+            result_tb_status = tb_status.fetchone()
+            mydb.commit()
+            db_status = np.array(result_tb_status).T
+            dt_sideslip_flag = int(db_status[0])
+            
+            self.exec_print_thermal()
+            self.exec_print_pdf()
+
+            self.ids.bt_print.disabled = True
+
+        except Exception as e:
+            toast_msg = f'Gagal Mencetak Hasil Uji'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")  
+
+    def exec_print_pdf(self):
+        global flag_play
+        global count_starting, count_get_data
+        global mydb, db_antrian
+        global dt_no_antri, dt_no_pol, dt_no_uji, dt_nama, dt_jns_kend
+        global dt_speed_flag
+
+        try:
+            print_datetime = str(time.strftime("%Y/%m/%d %H:%M:%S", time.localtime()))
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_xy(0, 2)
+            pdf.image("assets/images/logo-dishub.png", w=30.0, h=0, x=20)
+            pdf.image("assets/images/logo-pandeglang.png", w=30.0, h=0, x=110)            
+            pdf.set_font('Arial', 'B', 24.0)
+            pdf.cell(ln=1, h=5.0, w=0)
+            pdf.cell(ln=1, h=15.0, align='C', w=0, txt="DINAS PERHUBUNGAN", border=0)
+            pdf.cell(ln=1, h=15.0, align='C', w=0, txt="UPTD PKB KAB. PANDEGLANG", border=0)
+            pdf.cell(ln=1, h=5.0, w=0)
+            pdf.set_font('Arial', 'B', 14.0)
+            pdf.cell(ln=0, h=10.0, align='L', w=0, txt=f"Tanggal: {print_datetime}", border=0)
+            pdf.cell(ln=1, h=10.0, align='R', w=0, txt=f"No Reg Kend: {dt_no_pol}", border=0)
+            pdf.cell(ln=0, h=10.0, align='L', w=0, txt=f"No Antrian: {dt_no_antri}", border=0)
+            pdf.cell(ln=1, h=10.0, align='R', w=0, txt=f"No Uji: {dt_no_uji}", border=0)
+            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Jenis Kendaraan: {dt_jns_kend}", border=0)
+            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Nama: {dt_nama}", border=0)
+            pdf.cell(ln=0, h=10.0, align='L', w=0, txt=f"JBB: {dt_jbb}", border=0)
+            pdf.cell(ln=1, h=10.0, align='R', w=0, txt=f"Berat Kosong: {float(dt_brt_ksg)}", border=0)
+            pdf.cell(ln=1, h=10.0, w=0)
+            pdf.set_font('Arial', '', 14.0)
+            pdf.cell(ln=1, h=10.0, align='L', w=80, txt=f"SIDESLIP METER")
+            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Nilai Pengujian : {int(dt_sideslip_value)} kg")
+            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Status Pengujian: {'Lulus' if dt_sideslip_flag == 2 else 'Tidak Lulus' if dt_sideslip_flag == 1 else 'Belum Diuji'}")
+            pdf.cell(ln=1, h=5.0, w=0)
+
+            documents_dir = os.path.join(os.environ["USERPROFILE"], "Documents")
+
+            folder_name = f"Hasil_Uji_VIIS_Sideslip_Tester_{time.strftime('%Y-%m-%d', time.localtime())}"
+            date_folder_path = os.path.join(documents_dir, folder_name)
+            
+            if not os.path.exists(date_folder_path):
+                os.makedirs(date_folder_path)
+                toast(f"Folder created: {date_folder_path}")
+            else:
+                toast(f"Folder already exists: {date_folder_path}")
+
+            pdf_filename = f"Hasil_Uji_No_{dt_no_antri}.pdf"
+            pdf_path = os.path.join(date_folder_path, pdf_filename)
+
+            pdf.output(pdf_path, 'F')
+            toast(f"PDF saved to: {pdf_path}")
+            os.startfile(pdf_path)
+
+        except Exception as e:
+            toast_msg = f'Gagal menyimpan ke pdf'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")  
+
+    def exec_print_thermal(self):
+        global flag_play
+        global count_starting, count_get_data
+        global mydb, db_antrian
+        global dt_no_antri, dt_no_pol, dt_no_uji, dt_nama, dt_jns_kend
+        global dt_speed_flag
+
+        try:
+            """ 9600 Baud, 8N1, Flow Control Enabled """
+            printer = Serial(devfile=PRINTER_THERM_COM,
+                    baudrate=PRINTER_THERM_BAUD,
+                    bytesize=PRINTER_THERM_BYTESIZE,
+                    parity=PRINTER_THERM_PARITY,
+                    stopbits=PRINTER_THERM_STOPBITS,
+                    timeout=PRINTER_THERM_TIMEOUT,
+                    dsrdtr=PRINTER_THERM_DSRDTR,)
+            print_datetime = str(time.strftime("%d %B %Y %H:%M:%S", time.localtime()))
+            
+            printer.image("assets/images/logo-dishub.png")
+            printer.image("assets/images/logo-pandeglang.png")
+            printer.textln(" \n ")
+            printer.textln("VEHICLE INSPECTION INTEGRATION SYSTEM")
+            printer.textln("SIDESLIP TESTER")
+            printer.textln("================================================================")
+            printer.text(f"No Antrian: {dt_no_antri}\t")
+            printer.text(f"No Reg: {dt_no_pol}\t")
+            printer.textln(f"No Uji: {dt_no_uji}")
+            printer.textln("  ")
+            printer.text(f"Nama: {dt_nama}\t")
+            printer.textln(f"Jenis Kendaraan: {dt_jns_kend}")
+            printer.textln("  ")
+            printer.textln(f"Tanggal: {print_datetime}")
+            printer.textln("  ")
+            printer.textln(f"SIDESLIP TESTER")
+            printer.textln(f"Nilai Pengujian : {dt_sideslip_value} rpm")
+            printer.textln(f"Status Pengujian : {'Lulus' if dt_sideslip_flag == 2 else 'Tidak Lulus' if dt_sideslip_flag == 1 else 'Belum Diuji'}")
+            printer.textln("  ")
+            printer.textln("================================================================")
+            printer.cut()
+
+        except Exception as e:
+            toast_msg = f'Gagal mencetak menggunakan Thermal Printer'
+            toast(toast_msg)
+            Logger.error(f"{self.name}: {toast_msg}, {e}")  
 
     def open_screen_main(self):
         global flag_play        
