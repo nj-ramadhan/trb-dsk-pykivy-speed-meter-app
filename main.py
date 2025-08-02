@@ -446,23 +446,23 @@ class ScreenMain(MDScreen):
                     if((dt_speed_value >= STANDARD_MIN_SPEED) and (dt_speed_value <= STANDARD_MAX_SPEED)):
                         screen_speed_meter.ids.lb_test_result.md_bg_color = colors['Green']['200']
                         screen_speed_meter.ids.lb_test_result.text = "LULUS"
-                        dt_speed_flag = "Lulus"
+                        dt_speed_flag = 2
                         screen_speed_meter.ids.lb_test_result.text_color = colors['Green']['700']
                     else:
                         screen_speed_meter.ids.lb_test_result.md_bg_color = colors['Red']['A200']
                         screen_speed_meter.ids.lb_test_result.text = "TIDAK LULUS"
-                        dt_speed_flag = "Tidak Lulus"
+                        dt_speed_flag = 1
                         screen_speed_meter.ids.lb_test_result.text_color = colors['Red']['A700']
 
                     if((dt_sideslip_value <= STANDARD_MAX_SIDESLIP) and (dt_sideslip_value >= -STANDARD_MAX_SIDESLIP)):
                         screen_sideslip_meter.ids.lb_test_result.md_bg_color = colors['Green']['200']
                         screen_sideslip_meter.ids.lb_test_result.text = "LULUS"
-                        dt_sideslip_flag = "Lulus"
+                        dt_sideslip_flag = 2
                         screen_sideslip_meter.ids.lb_test_result.text_color = colors['Green']['700']
                     else:
                         screen_sideslip_meter.ids.lb_test_result.md_bg_color = colors['Red']['A200']
                         screen_sideslip_meter.ids.lb_test_result.text = "TIDAK LULUS"
-                        dt_sideslip_flag = "Tidak Lulus"
+                        dt_sideslip_flag = 1
                         screen_sideslip_meter.ids.lb_test_result.text_color = colors['Red']['A700']
 
             elif(count_get_data > 0):
@@ -1400,7 +1400,7 @@ class ScreenSpeedMeter(MDScreen):
         try:
             tb_speed_data = mydb.cursor()
             sql = f"UPDATE {TB_DATA} SET speed_flag = %s, speed_value = %s, speed_user = %s, speed_post = %s WHERE noantrian = %s"
-            sql_speed_flag = (1 if dt_speed_flag == "Lulus" else 2)
+            sql_speed_flag = dt_sideslip_flag
             now = str(time.strftime("%Y/%m/%d %H:%M:%S", time.localtime()))
             sql_val = (sql_speed_flag, dt_speed_value, dt_id_user, now, dt_no_antri)
             tb_speed_data.execute(sql, sql_val)
@@ -1418,13 +1418,13 @@ class ScreenSpeedMeter(MDScreen):
 
     def exec_print(self):
         try:
-            global dt_load_flag, dt_brake_flag, dt_handbrake_flag
+            global dt_speed_flag
             tb_status = mydb.cursor()
             tb_status.execute(f"SELECT speed_flag FROM {TB_DATA} WHERE noantrian = '{dt_no_antri}'")
             result_tb_status = tb_status.fetchone()
             mydb.commit()
             db_status = np.array(result_tb_status).T
-            dt_load_flag            = int(db_status[0])
+            dt_speed_flag = int(db_status[0])
             
             self.exec_print_thermal()
             self.exec_print_pdf()
@@ -1448,8 +1448,9 @@ class ScreenSpeedMeter(MDScreen):
             pdf = FPDF()
             pdf.add_page()
             pdf.set_xy(0, 2)
-            pdf.image("assets/images/logo-dishub.png", w=30.0, h=0, x=20)
-            pdf.image("assets/images/logo-pandeglang.png", w=30.0, h=0, x=110)            
+            pdf.image(f"assets/images/{IMG_LOGO_DISHUB}", w=30.0, h=0, x=20)
+            pdf.set_xy(0, 2)
+            pdf.image(f"assets/images/{IMG_LOGO_PEMKAB}", w=30.0, h=0, x=180)            
             pdf.set_font('Arial', 'B', 24.0)
             pdf.cell(ln=1, h=5.0, w=0)
             pdf.cell(ln=1, h=15.0, align='C', w=0, txt="DINAS PERHUBUNGAN", border=0)
@@ -1467,8 +1468,8 @@ class ScreenSpeedMeter(MDScreen):
             pdf.cell(ln=1, h=10.0, w=0)
             pdf.set_font('Arial', '', 14.0)
             pdf.cell(ln=1, h=10.0, align='L', w=80, txt=f"SPEEDO METER")
-            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Nilai Pengujian : {int(dt_speed_value)} kg")
-            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Status Pengujian: {'Lulus' if dt_speed_flag == 2 else 'Tidak Lulus' if dt_speed_flag == 1 else 'Belum Diuji'}")
+            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Nilai Pengujian : {float(dt_speed_value)} rpm")
+            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Status Pengujian: {'Lulus' if int(dt_sideslip_flag) == 2 else 'Tidak Lulus' if int(dt_sideslip_flag) == 1 else 'Belum Diuji'}")
             pdf.cell(ln=1, h=5.0, w=0)
 
             documents_dir = os.path.join(os.environ["USERPROFILE"], "Documents")
@@ -1528,8 +1529,8 @@ class ScreenSpeedMeter(MDScreen):
             printer.textln(f"Tanggal: {print_datetime}")
             printer.textln("  ")
             printer.textln(f"SPEEDO METER")
-            printer.textln(f"Nilai Pengujian : {dt_speed_value} rpm")
-            printer.textln(f"Status Pengujian : {'Lulus' if dt_speed_flag == 2 else 'Tidak Lulus' if dt_speed_flag == 1 else 'Belum Diuji'}")
+            printer.textln(f"Nilai Pengujian : {float(dt_speed_value)} rpm")
+            printer.textln(f"Status Pengujian : {'Lulus' if int(dt_sideslip_flag) == 2 else 'Tidak Lulus' if int(dt_sideslip_flag) == 1 else 'Belum Diuji'}")
             printer.textln("  ")
             printer.textln("================================================================")
             printer.cut()
@@ -1631,7 +1632,7 @@ class ScreenSideSlipMeter(MDScreen):
         try:
             tb_sideslip_data = mydb.cursor()
             sql = f"UPDATE {TB_DATA} SET sideslip_flag = %s, sideslip_value = %s, sideslip_user = %s, sideslip_post = %s WHERE noantrian = %s"
-            sql_sideslip_flag = (1 if dt_sideslip_flag == "Lulus" else 2)
+            sql_sideslip_flag = dt_sideslip_flag
             now = str(time.strftime("%Y/%m/%d %H:%M:%S", time.localtime()))
             sql_val = (sql_sideslip_flag, dt_sideslip_value, dt_id_user, now, dt_no_antri)
             tb_sideslip_data.execute(sql, sql_val)
@@ -1679,8 +1680,9 @@ class ScreenSideSlipMeter(MDScreen):
             pdf = FPDF()
             pdf.add_page()
             pdf.set_xy(0, 2)
-            pdf.image("assets/images/logo-dishub.png", w=30.0, h=0, x=20)
-            pdf.image("assets/images/logo-pandeglang.png", w=30.0, h=0, x=110)            
+            pdf.image(f"assets/images/{IMG_LOGO_DISHUB}", w=30.0, h=0, x=20)
+            pdf.set_xy(0, 2)
+            pdf.image(f"assets/images/{IMG_LOGO_PEMKAB}", w=30.0, h=0, x=180)            
             pdf.set_font('Arial', 'B', 24.0)
             pdf.cell(ln=1, h=5.0, w=0)
             pdf.cell(ln=1, h=15.0, align='C', w=0, txt="DINAS PERHUBUNGAN", border=0)
@@ -1698,8 +1700,8 @@ class ScreenSideSlipMeter(MDScreen):
             pdf.cell(ln=1, h=10.0, w=0)
             pdf.set_font('Arial', '', 14.0)
             pdf.cell(ln=1, h=10.0, align='L', w=80, txt=f"SIDESLIP METER")
-            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Nilai Pengujian : {int(dt_sideslip_value)} kg")
-            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Status Pengujian: {'Lulus' if dt_sideslip_flag == 2 else 'Tidak Lulus' if dt_sideslip_flag == 1 else 'Belum Diuji'}")
+            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Nilai Pengujian : {float(dt_sideslip_value)} mm")
+            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Status Pengujian: {'Lulus' if int(dt_sideslip_flag) == 2 else 'Tidak Lulus' if int(dt_sideslip_flag) == 1 else 'Belum Diuji'}")
             pdf.cell(ln=1, h=5.0, w=0)
 
             documents_dir = os.path.join(os.environ["USERPROFILE"], "Documents")
@@ -1759,8 +1761,8 @@ class ScreenSideSlipMeter(MDScreen):
             printer.textln(f"Tanggal: {print_datetime}")
             printer.textln("  ")
             printer.textln(f"SIDESLIP TESTER")
-            printer.textln(f"Nilai Pengujian : {dt_sideslip_value} rpm")
-            printer.textln(f"Status Pengujian : {'Lulus' if dt_sideslip_flag == 2 else 'Tidak Lulus' if dt_sideslip_flag == 1 else 'Belum Diuji'}")
+            printer.textln(f"Nilai Pengujian : {float(dt_sideslip_value)} mm")
+            printer.textln(f"Status Pengujian : {'Lulus' if int(dt_sideslip_flag) == 2 else 'Tidak Lulus' if int(dt_sideslip_flag) == 1 else 'Belum Diuji'}")
             printer.textln("  ")
             printer.textln("================================================================")
             printer.cut()
