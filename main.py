@@ -477,8 +477,8 @@ class ScreenMain(MDScreen):
                 sideslip_registers = MODBUS_CLIENT.read_holding_registers(REGISTER_DATA_SIDE_SLIP, count=1, slave=1)
                 MODBUS_CLIENT.close()
 
-                dt_speed_value = np.round(speed_registers.registers[0] / 10, 2)
-                dt_sideslip_value = np.round(sideslip_registers.registers[0] / 10, 2)
+                dt_speed_value = np.round(self.unsigned_to_signed(speed_registers.registers[0]) / 10, 2) #dc
+                dt_sideslip_value = np.round(self.unsigned_to_signed(sideslip_registers.registers[0]) / 10, 2) #dc
 
                 screen_calibration.ids.lb_speed_val.text = str(dt_speed_value)
                 screen_calibration.ids.lb_sideslip_val.text = str(dt_sideslip_value)
@@ -553,8 +553,8 @@ class ScreenMain(MDScreen):
                 sideslip_registers = MODBUS_CLIENT.read_holding_registers(REGISTER_DATA_SIDE_SLIP, count=1, slave=1)
                 MODBUS_CLIENT.close()
 
-                dt_speed_value = np.round(speed_registers.registers[0] / 10, 2)
-                dt_sideslip_value = np.round(sideslip_registers.registers[0] / 10, 2)
+                dt_speed_value = np.round(self.unsigned_to_signed(speed_registers.registers[0]) / 10, 2) #dc
+                dt_sideslip_value = np.round(self.unsigned_to_signed(sideslip_registers.registers[0]) / 10, 2) #dc
                 
         except Exception as e:
             toast_msg = f'Gagal Mengambil Data dari PLC'
