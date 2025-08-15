@@ -356,7 +356,7 @@ class ScreenMain(MDScreen):
             self.ids.lb_dash_sudah_uji.text = str(dt_dash_sudah_uji)
 
             screen_speed_meter.ids.lb_speed_val.text = str(dt_speed_value)
-            screen_sideslip_meter.ids.lb_sideslip_val.text = str(dt_speed_value)
+            screen_sideslip_meter.ids.lb_sideslip_val.text = str(dt_sideslip_value)
 
             if(not flag_play):
                 screen_speed_meter.ids.bt_save.md_bg_color = colors['Green']['200']
@@ -419,7 +419,7 @@ class ScreenMain(MDScreen):
                 screen_speed_meter.ids.lb_test_subtitle.text = "HASIL PENGUKURAN"
                 screen_speed_meter.ids.lb_speed_val.text = str(dt_speed_value)
                 screen_sideslip_meter.ids.lb_test_subtitle.text = "HASIL PENGUKURAN"
-                screen_sideslip_meter.ids.lb_sideslip_val.text = str(dt_speed_value)
+                screen_sideslip_meter.ids.lb_sideslip_val.text = str(dt_sideslip_value)
 
                 if((dt_speed_value >= STANDARD_MIN_SPEED) and (dt_speed_value <= STANDARD_MAX_SPEED)):
                     screen_speed_meter.ids.lb_info.text = f"Ambang Batas Kecepatan yang diperbolehkan adalah {STANDARD_MIN_SPEED} hingga {STANDARD_MAX_SPEED} rpm.\nDeviasi Kecepatan Kendaraan Anda Didalam Ambang Batas"
@@ -554,8 +554,7 @@ class ScreenMain(MDScreen):
                 MODBUS_CLIENT.close()
 
                 dt_speed_value = np.round(self.unsigned_to_signed(speed_registers.registers[0]) / 10, 2) #dc
-                dt_sideslip_value = np.round(self.unsigned_to_signed(sideslip_registers.registers[0]) / 10, 2) #dc
-                
+                dt_sideslip_value = abs(np.round(self.unsigned_to_signed(sideslip_registers.registers[0]) / 10, 2)) #dc
         except Exception as e:
             toast_msg = f'Gagal Mengambil Data dari PLC'
             toast(toast_msg)
@@ -1402,7 +1401,7 @@ class ScreenSpeedMeter(MDScreen):
         try:
             tb_speed_data = mydb.cursor()
             sql = f"UPDATE {TB_DATA} SET speed_flag = %s, speed_value = %s, speed_user = %s, speed_post = %s WHERE noantrian = %s"
-            sql_speed_flag = dt_sideslip_flag
+            sql_speed_flag = dt_speed_flag
             now = str(time.strftime("%Y/%m/%d %H:%M:%S", time.localtime()))
             sql_val = (sql_speed_flag, dt_speed_value, dt_id_user, now, dt_no_antri)
             tb_speed_data.execute(sql, sql_val)
@@ -1471,7 +1470,7 @@ class ScreenSpeedMeter(MDScreen):
             pdf.set_font('Arial', '', 14.0)
             pdf.cell(ln=1, h=10.0, align='L', w=80, txt=f"SPEEDO METER")
             pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Nilai Pengujian : {float(dt_speed_value)} rpm")
-            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Status Pengujian: {'Lulus' if int(dt_sideslip_flag) == 2 else 'Tidak Lulus' if int(dt_sideslip_flag) == 1 else 'Belum Diuji'}")
+            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Status Pengujian: {'Lulus' if int(dt_speed_flag) == 2 else 'Tidak Lulus' if int(dt_speed_flag) == 1 else 'Belum Diuji'}")
             pdf.cell(ln=1, h=5.0, w=0)
 
             documents_dir = os.path.join(os.environ["USERPROFILE"], "Documents")
@@ -1532,7 +1531,7 @@ class ScreenSpeedMeter(MDScreen):
             printer.textln("  ")
             printer.textln(f"SPEEDO METER")
             printer.textln(f"Nilai Pengujian : {float(dt_speed_value)} rpm")
-            printer.textln(f"Status Pengujian : {'Lulus' if int(dt_sideslip_flag) == 2 else 'Tidak Lulus' if int(dt_sideslip_flag) == 1 else 'Belum Diuji'}")
+            printer.textln(f"Status Pengujian : {'Lulus' if int(dt_speed_flag) == 2 else 'Tidak Lulus' if int(dt_speed_flag) == 1 else 'Belum Diuji'}")
             printer.textln("  ")
             printer.textln("================================================================")
             printer.cut()
