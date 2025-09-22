@@ -446,23 +446,23 @@ class ScreenMain(MDScreen):
                     if((dt_speed_value >= STANDARD_MIN_SPEED) and (dt_speed_value <= STANDARD_MAX_SPEED)):
                         screen_speed_meter.ids.lb_test_result.md_bg_color = colors['Green']['200']
                         screen_speed_meter.ids.lb_test_result.text = "LULUS"
-                        dt_speed_flag = 2
+                        dt_speed_flag = 1
                         screen_speed_meter.ids.lb_test_result.text_color = colors['Green']['700']
                     else:
                         screen_speed_meter.ids.lb_test_result.md_bg_color = colors['Red']['A200']
                         screen_speed_meter.ids.lb_test_result.text = "TIDAK LULUS"
-                        dt_speed_flag = 1
+                        dt_speed_flag = 0
                         screen_speed_meter.ids.lb_test_result.text_color = colors['Red']['A700']
 
                     if((dt_sideslip_value <= STANDARD_MAX_SIDESLIP) and (dt_sideslip_value >= -STANDARD_MAX_SIDESLIP)):
                         screen_sideslip_meter.ids.lb_test_result.md_bg_color = colors['Green']['200']
                         screen_sideslip_meter.ids.lb_test_result.text = "LULUS"
-                        dt_sideslip_flag = 2
+                        dt_sideslip_flag = 1
                         screen_sideslip_meter.ids.lb_test_result.text_color = colors['Green']['700']
                     else:
                         screen_sideslip_meter.ids.lb_test_result.md_bg_color = colors['Red']['A200']
                         screen_sideslip_meter.ids.lb_test_result.text = "TIDAK LULUS"
-                        dt_sideslip_flag = 1
+                        dt_sideslip_flag = 0
                         screen_sideslip_meter.ids.lb_test_result.text_color = colors['Red']['A700']
 
             elif(count_get_data > 0):
@@ -553,8 +553,8 @@ class ScreenMain(MDScreen):
                 sideslip_registers = MODBUS_CLIENT.read_holding_registers(REGISTER_DATA_SIDE_SLIP, count=1, slave=1)
                 MODBUS_CLIENT.close()
 
-                dt_speed_value = np.round(self.unsigned_to_signed(speed_registers.registers[0]) / 10, 2) #dc
-                dt_sideslip_value = abs(np.round(self.unsigned_to_signed(sideslip_registers.registers[0]) / 10, 2)) #dc
+                dt_speed_value = np.round(self.unsigned_to_signed(speed_registers.registers[0]) / 10, 2)
+                dt_sideslip_value = abs(np.round(self.unsigned_to_signed(sideslip_registers.registers[0]) / 10, 2)) 
         except Exception as e:
             toast_msg = f'Gagal Mengambil Data dari PLC'
             toast(toast_msg)
@@ -610,7 +610,7 @@ class ScreenMain(MDScreen):
             else:
                 dt_dash_antri = result[0]
 
-                cursor.execute(f"SELECT noantrian, nopol, nouji, statusuji, merk, type, idjeniskendaraan, jbb, berat_kosong, bahan_bakar, warna, speed_flag, sideslip_flag FROM {TB_DATA} WHERE speed_flag = 0 OR sideslip_flag = 0")
+                cursor.execute(f"SELECT noantrian, nopol, nouji, statusuji, merk, type, idjeniskendaraan, jbb, berat_kosong, bahan_bakar, warna, speed_flag, sideslip_flag FROM {TB_DATA} WHERE speed_flag = 2 OR sideslip_flag = 2")
                 result_tb_antrian = cursor.fetchall()
                 db_antrian = np.array(result_tb_antrian).T
 
@@ -649,8 +649,8 @@ class ScreenMain(MDScreen):
                         MDLabel(text=f"{db_antrian[8, i]}", size_hint_x= 0.05),
                         MDLabel(text='-' if db_antrian[9, i] == None else f"{db_bahan_bakar[np.where(db_bahan_bakar == db_antrian[9, i])[0][0],1]}" , size_hint_x= 0.08),
                         MDLabel(text='-' if db_antrian[10, i] == None else f"{db_warna[np.where(db_warna == db_antrian[10, i])[0][0],1]}" , size_hint_x= 0.11),
-                        MDLabel(text='Lulus' if (int(db_antrian[11, i]) == 2) else 'Tidak Lulus' if (int(db_antrian[11, i]) == 1) else 'Belum Uji', size_hint_x= 0.07),
-                        MDLabel(text='Lulus' if (int(db_antrian[12, i]) == 2) else 'Tidak Lulus' if (int(db_antrian[12, i]) == 1) else 'Belum Uji', size_hint_x= 0.07),
+                        MDLabel(text='Lulus' if (int(db_antrian[11, i]) == 1) else 'Tidak Lulus' if (int(db_antrian[11, i]) == 0) else 'Belum Uji', size_hint_x= 0.07),
+                        MDLabel(text='Lulus' if (int(db_antrian[12, i]) == 1) else 'Tidak Lulus' if (int(db_antrian[12, i]) == 0) else 'Belum Uji', size_hint_x= 0.07),
 
                         ripple_behavior = True,
                         on_press = self.on_antrian_row_press,
@@ -1470,7 +1470,7 @@ class ScreenSpeedMeter(MDScreen):
             pdf.set_font('Arial', '', 14.0)
             pdf.cell(ln=1, h=10.0, align='L', w=80, txt=f"SPEEDO METER")
             pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Nilai Pengujian : {float(dt_speed_value)} rpm")
-            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Status Pengujian: {'Lulus' if int(dt_speed_flag) == 2 else 'Tidak Lulus' if int(dt_speed_flag) == 1 else 'Belum Diuji'}")
+            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Status Pengujian: {'Lulus' if int(dt_speed_flag) == 1 else 'Tidak Lulus' if int(dt_speed_flag) == 0 else 'Belum Diuji'}")
             pdf.cell(ln=1, h=5.0, w=0)
 
             documents_dir = os.path.join(os.environ["USERPROFILE"], "Documents")
@@ -1531,7 +1531,7 @@ class ScreenSpeedMeter(MDScreen):
             printer.textln("  ")
             printer.textln(f"SPEEDO METER")
             printer.textln(f"Nilai Pengujian : {float(dt_speed_value)} rpm")
-            printer.textln(f"Status Pengujian : {'Lulus' if int(dt_speed_flag) == 2 else 'Tidak Lulus' if int(dt_speed_flag) == 1 else 'Belum Diuji'}")
+            printer.textln(f"Status Pengujian : {'Lulus' if int(dt_speed_flag) == 1 else 'Tidak Lulus' if int(dt_speed_flag) == 0 else 'Belum Diuji'}")
             printer.textln("  ")
             printer.textln("================================================================")
             printer.cut()
@@ -1702,7 +1702,7 @@ class ScreenSideSlipMeter(MDScreen):
             pdf.set_font('Arial', '', 14.0)
             pdf.cell(ln=1, h=10.0, align='L', w=80, txt=f"SIDESLIP METER")
             pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Nilai Pengujian : {float(dt_sideslip_value)} mm")
-            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Status Pengujian: {'Lulus' if int(dt_sideslip_flag) == 2 else 'Tidak Lulus' if int(dt_sideslip_flag) == 1 else 'Belum Diuji'}")
+            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Status Pengujian: {'Lulus' if int(dt_sideslip_flag) == 1 else 'Tidak Lulus' if int(dt_sideslip_flag) == 0 else 'Belum Diuji'}")
             pdf.cell(ln=1, h=5.0, w=0)
 
             documents_dir = os.path.join(os.environ["USERPROFILE"], "Documents")
@@ -1763,7 +1763,7 @@ class ScreenSideSlipMeter(MDScreen):
             printer.textln("  ")
             printer.textln(f"SIDESLIP TESTER")
             printer.textln(f"Nilai Pengujian : {float(dt_sideslip_value)} mm")
-            printer.textln(f"Status Pengujian : {'Lulus' if int(dt_sideslip_flag) == 2 else 'Tidak Lulus' if int(dt_sideslip_flag) == 1 else 'Belum Diuji'}")
+            printer.textln(f"Status Pengujian : {'Lulus' if int(dt_sideslip_flag) == 1 else 'Tidak Lulus' if int(dt_sideslip_flag) == 0 else 'Belum Diuji'}")
             printer.textln("  ")
             printer.textln("================================================================")
             printer.cut()
