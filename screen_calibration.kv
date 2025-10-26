@@ -122,7 +122,7 @@
 					
 					MDBoxLayout:
 						orientation: "vertical"
-						size_hint_y: 0.5
+						size_hint_y: 1
 						spacing: 15
 						MDRectangleFlatIconButton:
 							id: bt_exec_calibrate_default_ppr_speed
@@ -169,90 +169,6 @@
 								md_bg_color: "#2CA02C"
 								font_style: 'H6'
 								on_press: root.exec_calibrate_ppr_speed()
-
-						MDBoxLayout:
-							orientation: "horizontal"
-							size_hint_y: 0.6	
-
-				MDBoxLayout:
-					orientation: "vertical"
-					size_hint_x: 0.5
-					padding:20
-					spacing:15
-
-					MDBoxLayout:
-						orientation: "vertical"
-						size_hint_y: 0.5
-						MDLabel:
-							text: "KALIBRASI SIDESLIP"
-							halign: "center"
-							valign: "middle"
-							font_style: 'H5'
-
-						MDLabel:
-							text: "Realtime:"
-							halign: "center"
-							valign: "middle"
-							font_style: 'H3'
-
-
-						MDLabel:
-							id:lb_sideslip_val
-							text: "..."
-							halign: "center"
-							valign: "middle"
-							font_style: 'H1'
-					
-					MDBoxLayout:
-						orientation: "vertical"
-						size_hint_y: 0.5
-						spacing: 15
-
-						MDRectangleFlatIconButton:
-							id: bt_exec_calibrate_default_ppr_sideslip
-							type: "large"
-							icon: "play"
-							size_hint_x: 0.3
-							size_hint_y: 0.2
-							text:"RESET SETELAN"
-							text_color: "#EEEEEE"
-							md_bg_color: "#4471C4"
-							font_style: 'H6'
-							on_press: root.exec_calibrate_default_ppr_sideslip()
-							on_release: root.rel_calibrate_default_ppr_sideslip()	
-
-						MDBoxLayout:
-							orientation: "horizontal"
-							size_hint_y: 0.2
-							MDLabel:
-								text: "Kalibrasi PPR Encoder"
-								halign: "left"
-								valign: "middle"
-								font_style: 'H6'
-								size_hint_x: 0.3
-
-							MDTextField:
-								id: tx_calibrate_ppr_sideslip
-								hint_text: "PPR Encoder"
-								halign: "left"
-								valign: "middle"
-								font_style: 'H6'
-								size_hint_x: 0.4
-								type: "number"
-								input_filter: 'int'
-								text_color_focus: "#4471C4"
-								on_text_validate: root.exec_calibrate_ppr_sideslip()								
-							
-							MDRectangleFlatIconButton:
-								id: bt_exec_calibrate_ppr_sideslip
-								type: "large"
-								size_hint_x: 0.3
-								icon: "gauge"
-								text:"KALIBRASI"
-								text_color: "#EEEEEE"
-								md_bg_color: "#2CA02C"
-								font_style: 'H6'
-								on_press: root.exec_calibrate_ppr_sideslip()
 
 						MDBoxLayout:
 							orientation: "horizontal"
