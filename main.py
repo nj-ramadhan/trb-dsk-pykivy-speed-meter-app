@@ -17,7 +17,7 @@ logger_name = f'app.log'
 logger_dir = os.path.join(application_path, "logs")
 
 from kivy.config import Config
-Config.set('kivy', 'keyboard_mode', 'system')
+Config.set('kivy', 'keyboard_mode', 'systemanddock')
 
 from kivy.logger import Logger
 from kivy.clock import Clock
@@ -523,7 +523,7 @@ class ScreenMain(MDScreen):
             else:
                 dt_dash_antri = result[0]
 
-                cursor.execute(f"SELECT noantrian, nopol, nouji, statusuji, merk, type, idjeniskendaraan, jbb, berat_kosong, bahan_bakar, warna, speed_flag FROM {TB_DATA} WHERE speed_flag = 0")
+                cursor.execute(f"SELECT noantrian, nopol, nouji, statusuji, merk, type, idjeniskendaraan, jbb, berat_kosong, bahan_bakar, warna, speed_flag FROM {TB_DATA} WHERE speed_flag = 2")
                 result_tb_antrian = cursor.fetchall()
                 db_antrian = np.array(result_tb_antrian).T
 
@@ -562,7 +562,7 @@ class ScreenMain(MDScreen):
                         MDLabel(text=f"{db_antrian[8, i]}", size_hint_x= 0.05),
                         MDLabel(text='-' if db_antrian[9, i] == None else f"{db_bahan_bakar[np.where(db_bahan_bakar == db_antrian[9, i])[0][0],1]}" , size_hint_x= 0.08),
                         MDLabel(text='-' if db_antrian[10, i] == None else f"{db_warna[np.where(db_warna == db_antrian[10, i])[0][0],1]}" , size_hint_x= 0.11),
-                        MDLabel(text='Lulus' if (int(db_antrian[11, i]) == 2) else 'Tidak Lulus' if (int(db_antrian[11, i]) == 1) else 'Belum Uji', size_hint_x= 0.07),
+                        MDLabel(text='Lulus' if (int(db_antrian[11, i]) == 1) else 'Tidak Lulus' if (int(db_antrian[11, i]) == 0) else 'Belum Uji', size_hint_x= 0.07),
 
                         ripple_behavior = True,
                         on_press = self.on_antrian_row_press,
@@ -611,7 +611,7 @@ class ScreenMain(MDScreen):
         global count_starting, count_get_data
 
         if (dt_user != ''):
-            if (int(dt_speed_flag) == 0):
+            if (int(dt_speed_flag) == 2):
 
                 # Logika untuk memulai tes (diambil dari ScreenMenu lama)
                 count_starting = COUNT_STARTING_SPEED
@@ -907,8 +907,6 @@ class ScreenSpeedMeter(MDScreen):
             tb_speed_data.execute(sql, sql_val)
             mydb.commit()
             self.open_screen_main()
-
-            self.exec_print()
 
             self.ids.bt_save.disabled = True
         
