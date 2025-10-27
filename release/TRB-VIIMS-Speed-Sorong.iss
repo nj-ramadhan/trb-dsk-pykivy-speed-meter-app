@@ -4,7 +4,7 @@
 #define MyAppName "VIIMS - Speedo Meter Application - Sorong"
 #define MyAppVersion "2.1.251027"
 #define MyAppPublisher "PT. Tiga Ratu Berkarya"
-#define MyAppExeName "TRB-VIIMS-SpeedApp-Sorong.exe"
+#define MyAppExeName "TRB-VIIMS-SpeedMeterApp-Sorong.exe"
 #define MyAppAssocName "VIIMS - Speedo Meter Application Sorong Files"
 #define MyAppAssocExt ".msi"
 #define MyAppAssocKey StringChange(MyAppAssocName, " ", "") + MyAppAssocExt
@@ -30,7 +30,7 @@ ChangesAssociations=yes
 DisableProgramGroupPage=yes
 ; Uncomment the following line to run in non administrative install mode (install for current user only.)
 ;PrivilegesRequired=lowest
-OutputBaseFilename=TRB-VIIMS-SpeedApp-Sorong-Installer
+OutputBaseFilename=TRB-VIIMS-SpeedMeterApp-Sorong-Installer
 SetupIconFile=D:\PRJ\TRB - Vehicle Inspection Integration Management System\trb-dsk-pykivy-speed-meter-app\release\Application Folder\assets\images\logo-speed-app.ico
 Compression=lzma
 SolidCompression=yes
