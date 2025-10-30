@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "VIIMS - Speedo Meter Application - Sorong"
-#define MyAppVersion "2.1.251027"
+#define MyAppVersion "2.2.251030"
 #define MyAppPublisher "PT. Tiga Ratu Berkarya"
 #define MyAppExeName "TRB-VIIMS-SpeedMeterApp-Sorong.exe"
 #define MyAppAssocName "VIIMS - Speedo Meter Application Sorong Files"
