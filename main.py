@@ -384,7 +384,7 @@ class ScreenMain(MDScreen):
                     else:
                         screen_speed_meter.ids.lb_test_result.md_bg_color = colors['Red']['A200']
                         screen_speed_meter.ids.lb_test_result.text = "TIDAK LULUS"
-                        dt_speed_flag = 2
+                        dt_speed_flag = 0
                         screen_speed_meter.ids.lb_test_result.text_color = colors['Red']['A700']
 
             elif(count_get_data > 0):
