@@ -572,7 +572,7 @@ class ScreenMain(MDScreen):
     def exec_reload_table(self):
         global mydb, db_antrian
         global db_merk, db_bahan_bakar, db_warna
-        global dt_dash_antri, dt_dash_belum_uji, dt_dash_sudah_uji
+        global dt_dash_antri, dt_dash_pendaftaran, dt_dash_belum_uji, dt_dash_sudah_uji
         global window_size_x, window_size_y
 
         try:
@@ -612,11 +612,17 @@ class ScreenMain(MDScreen):
 
                 cursor.execute(f"SELECT noantrian, nopol, nouji, statusuji, merk, type, idjeniskendaraan, jbb, berat_kosong, bahan_bakar, warna, speed_flag, sideslip_flag FROM {TB_DATA} WHERE speed_flag = 2 OR sideslip_flag = 2")
                 result_tb_antrian = cursor.fetchall()
-                db_antrian = np.array(result_tb_antrian).T
 
-                db_pendaftaran = np.array(result_tb_antrian)
-                dt_dash_belum_uji = db_pendaftaran[:,0].size
-                dt_dash_sudah_uji = dt_dash_antri - dt_dash_belum_uji
+                if result_tb_antrian:
+                    db_antrian = np.array(result_tb_antrian).T
+                    db_pendaftaran_array = np.array(result_tb_antrian)
+                    dt_dash_belum_uji = db_pendaftaran_array[:,0].size
+                else:
+                    db_antrian = np.array([])
+                    dt_dash_belum_uji = 0
+                
+                dt_dash_pendaftaran = dt_dash_antri
+                dt_dash_sudah_uji = dt_dash_pendaftaran - dt_dash_belum_uji
             
             cursor.close()
 
