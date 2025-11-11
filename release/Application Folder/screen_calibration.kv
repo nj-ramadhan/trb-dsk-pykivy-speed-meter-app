@@ -96,39 +96,34 @@
 					orientation: "vertical"
 					size_hint_x: 0.5
 					padding:20
-					spacing:20
+					spacing:15
 
 					MDBoxLayout:
 						orientation: "vertical"
-						padding:20
-						spacing:20
-						
-						MDBoxLayout:
-							orientation: "horizontal"
-							size_hint_y: 0.2
+						size_hint_y: 0.5
+						MDLabel:
+							text: "KALIBRASI SPEEDO"
+							halign: "center"
+							valign: "middle"
+							font_style: 'H5'
 
-							MDLabel:
-								text: "KALIBRASI SPEEDO"
-								halign: "center"
-								valign: "middle"
-								font_style: 'H6'
-								size_hint_x: 0.5
+						MDLabel:
+							text: "Realtime:"
+							halign: "center"
+							valign: "middle"
+							font_style: 'H3'
 
-							MDLabel:
-								text: "Realtime:"
-								halign: "right"
-								valign: "middle"
-								font_style: 'H2'
-								size_hint_x: 0.2
-
-							MDLabel:
-								id:lb_speed_val
-								text: "..."
-								halign: "center"
-								valign: "middle"
-								font_style: 'H2'
-								size_hint_x: 0.3
-
+						MDLabel:
+							id:lb_speed_val
+							text: "..."
+							halign: "center"
+							valign: "middle"
+							font_style: 'H1'
+					
+					MDBoxLayout:
+						orientation: "vertical"
+						size_hint_y: 0.5
+						spacing: 15
 						MDRectangleFlatIconButton:
 							id: bt_exec_calibrate_default_ppr_speed
 							type: "large"
@@ -183,38 +178,35 @@
 					orientation: "vertical"
 					size_hint_x: 0.5
 					padding:20
-					spacing:20
+					spacing:15
 
 					MDBoxLayout:
 						orientation: "vertical"
-						padding:20
-						spacing:20
+						size_hint_y: 0.5
+						MDLabel:
+							text: "KALIBRASI SIDESLIP"
+							halign: "center"
+							valign: "middle"
+							font_style: 'H5'
 
-						MDBoxLayout:
-							orientation: "horizontal"
-							size_hint_y: 0.2
+						MDLabel:
+							text: "Realtime:"
+							halign: "center"
+							valign: "middle"
+							font_style: 'H3'
 
-							MDLabel:
-								text: "KALIBRASI SIDESLIP"
-								halign: "center"
-								valign: "middle"
-								font_style: 'H6'
-								size_hint_x: 0.5
 
-							MDLabel:
-								text: "Realtime:"
-								halign: "right"
-								valign: "middle"
-								font_style: 'H2'
-								size_hint_x: 0.2
-
-							MDLabel:
-								id:lb_sideslip_val
-								text: "..."
-								halign: "center"
-								valign: "middle"
-								font_style: 'H2'
-								size_hint_x: 0.3
+						MDLabel:
+							id:lb_sideslip_val
+							text: "..."
+							halign: "center"
+							valign: "middle"
+							font_style: 'H1'
+					
+					MDBoxLayout:
+						orientation: "vertical"
+						size_hint_y: 0.5
+						spacing: 15
 
 						MDRectangleFlatIconButton:
 							id: bt_exec_calibrate_default_ppr_sideslip

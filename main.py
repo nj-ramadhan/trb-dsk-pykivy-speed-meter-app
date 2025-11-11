@@ -728,7 +728,7 @@ class ScreenMain(MDScreen):
         global dt_speed_flag, dt_sideslip_flag, dt_no_antri, dt_user
 
         if (dt_user != ''):
-            if (int(dt_speed_flag) == 0 or int(dt_sideslip_flag) == 0):
+            if (int(dt_speed_flag) == 2 or int(dt_sideslip_flag) == 2):
                 self.screen_manager.current = 'screen_menu'
             else:
                 toast_msg = f'No. Antrian {dt_no_antri} Sudah Tes'
@@ -1413,7 +1413,7 @@ class ScreenSpeedMeter(MDScreen):
             self.ids.bt_save.disabled = True
         
         except Exception as e:
-            toast_msg = f'Error Save Data'
+            toast_msg = f'Gagal Menyimpan data'
             toast(toast_msg)
             Logger.error(f"{self.name}: {toast_msg}, {e}")  
 
@@ -1645,7 +1645,7 @@ class ScreenSideSlipMeter(MDScreen):
             self.ids.bt_save.disabled = True
 
         except Exception as e:
-            toast_msg = f'Gagal menyimpan data speed ke tabel antrian'
+            toast_msg = f'Gagal menyimpan data'
             toast(toast_msg)
             Logger.error(f"{self.name}: {toast_msg}, {e}") 
 
