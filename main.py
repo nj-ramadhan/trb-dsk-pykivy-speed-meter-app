@@ -65,9 +65,9 @@ LB_UNIT = config['app']['LB_UNIT']
 LB_UNIT_ADDRESS = config['app']['LB_UNIT_ADDRESS']
 
 # SQL setting
-DB_HOST = "194.31.53.37"
-DB_USER = "Pndujikir2022!"
-DB_PASSWORD = "@Kirpnd2022!"
+DB_HOST = "187.77.112.162"
+DB_USER = "Pndujikir2026!"
+DB_PASSWORD = "@PndKir2026!"
 
 DB_NAME = "pkbpandeglang"
 TB_DATA = "tb_cekident"
@@ -77,9 +77,9 @@ TB_BAHAN_BAKAR = "bahanbakar"
 TB_WARNA = "warna"
 TB_DATA_MASTER = "identkendaraan"
 
-FTP_HOST = "194.31.53.37"
+FTP_HOST = "187.117.112.162"
 FTP_USER = "root"
-FTP_PASS = "@D15HUBp2022!"
+FTP_PASS = "@SorongNew2026"
 
 ## System Setting
 TIME_OUT = int(config['setting']['TIME_OUT'])
@@ -197,45 +197,42 @@ class ScreenLogin(MDScreen):
             toast_msg = f'error Login: {e}'
 
     def exec_login(self):
-        global mydb, db_users
-        global dt_id_user, dt_user, dt_foto_user
-
+        global mydb, dt_id_user, dt_user, dt_foto_user
+        import bcrypt
         screen_main = self.screen_manager.get_screen('screen_main')
 
         try:
             screen_main.exec_reload_database()
-            input_username = self.ids.tx_username.text
+            input_email = self.ids.tx_username.text  # Digunakan sebagai input Email
             input_password = self.ids.tx_password.text        
-            # Adding salt at the last of the password
-            dataBase_password = input_password
-            # Encoding the password
-            hashed_password = hashlib.md5(dataBase_password.encode())
-
-            mycursor = mydb.cursor()
-            mycursor.execute(f"SELECT id_user, nama, username, password, image FROM {TB_USER} WHERE username = '{input_username}' and password = '{hashed_password.hexdigest()}'")
-            myresult = mycursor.fetchone()
-            db_users = np.array(myresult).T
             
-            if myresult is None:
-                toast_msg = f'Gagal Masuk, Nama Pengguna atau Password Salah'
-                toast(toast_msg) 
-                Logger.warning(f"{self.name}: {toast_msg}") 
-            else:
-                toast_msg = f'Berhasil Masuk, Selamat Datang {myresult[1]}'
-                toast(toast_msg)
-                Logger.info(f"{self.name}: {toast_msg}")  
+            mycursor = mydb.cursor()
+            # Query disamakan dengan aplikasi lainnya
+            query = "SELECT id, name, email, password FROM web_users WHERE email = %s AND tipe_user = '2'"
+            
+            mycursor.execute(query, (input_email,))
+            myresult = mycursor.fetchone()
+            
+            if myresult:
+                db_id, db_name, db_email, db_hashed_password = myresult
 
-                dt_id_user = myresult[0]
-                dt_user = myresult[1]
-                dt_foto_user = myresult[4]
-                self.ids.tx_username.text = ""
-                self.ids.tx_password.text = "" 
-                self.screen_manager.current = 'screen_main'
+                if bcrypt.checkpw(input_password.encode('utf-8'), db_hashed_password.encode('utf-8')):
+                    toast(f"Berhasil Masuk, Selamat Datang {db_name}")
+                    dt_id_user = db_id
+                    dt_user = db_name
+                    dt_foto_user = "" # web_users tidak memiliki kolom foto
+                    
+                    self.ids.tx_username.text = ""
+                    self.ids.tx_password.text = "" 
+                    self.screen_manager.current = 'screen_main'
+                else:
+                    toast("Maaf username dan password tidak sesuai")
+            else:
+                toast("Maaf username dan password tidak sesuai")
 
         except Exception as e:
-            toast_msg = f'Gagal masuk, silahkan isi nama user dan password yang sesuai'
-            toast(toast_msg)  
-            Logger.error(f"{self.name}: {toast_msg}, {e}")  
+            Logger.error(f"Login Error: {e}")
+            toast(f"Gagal masuk: {e}")
 
     def exec_navigate_home(self):
         try:
@@ -1501,50 +1498,50 @@ class ScreenSpeedMeter(MDScreen):
             toast(toast_msg)
             Logger.error(f"{self.name}: {toast_msg}, {e}")  
 
-    def exec_print_thermal(self):
-        global flag_play
-        global count_starting, count_get_data
-        global mydb, db_antrian
-        global dt_no_antri, dt_no_pol, dt_no_uji, dt_nama, dt_jns_kend
-        global dt_speed_flag
+    # def exec_print_thermal(self):
+    #     global flag_play
+    #     global count_starting, count_get_data
+    #     global mydb, db_antrian
+    #     global dt_no_antri, dt_no_pol, dt_no_uji, dt_nama, dt_jns_kend
+    #     global dt_speed_flag
 
-        try:
-            """ 9600 Baud, 8N1, Flow Control Enabled """
-            printer = Serial(devfile=PRINTER_THERM_COM,
-                    baudrate=PRINTER_THERM_BAUD,
-                    bytesize=PRINTER_THERM_BYTESIZE,
-                    parity=PRINTER_THERM_PARITY,
-                    stopbits=PRINTER_THERM_STOPBITS,
-                    timeout=PRINTER_THERM_TIMEOUT,
-                    dsrdtr=PRINTER_THERM_DSRDTR,)
-            print_datetime = str(time.strftime("%d %B %Y %H:%M:%S", time.localtime()))
+    #     try:
+    #         """ 9600 Baud, 8N1, Flow Control Enabled """
+    #         printer = Serial(devfile=PRINTER_THERM_COM,
+    #                 baudrate=PRINTER_THERM_BAUD,
+    #                 bytesize=PRINTER_THERM_BYTESIZE,
+    #                 parity=PRINTER_THERM_PARITY,
+    #                 stopbits=PRINTER_THERM_STOPBITS,
+    #                 timeout=PRINTER_THERM_TIMEOUT,
+    #                 dsrdtr=PRINTER_THERM_DSRDTR,)
+    #         print_datetime = str(time.strftime("%d %B %Y %H:%M:%S", time.localtime()))
             
-            printer.image("assets/images/logo-dishub.png")
-            printer.image("assets/images/logo-pandeglang.png")
-            printer.textln(" \n ")
-            printer.textln("VEHICLE INSPECTION INTEGRATION SYSTEM")
-            printer.textln("SPEEDO METER")
-            printer.textln("================================================================")
-            printer.text(f"No Antrian: {dt_no_antri}\t")
-            printer.text(f"No Reg: {dt_no_pol}\t")
-            printer.textln(f"No Uji: {dt_no_uji}")
-            printer.textln("  ")
-            printer.text(f"Nama: {dt_nama}\t")
-            printer.textln(f"Jenis Kendaraan: {dt_jns_kend}")
-            printer.textln("  ")
-            printer.textln(f"Tanggal: {print_datetime}")
-            printer.textln("  ")
-            printer.textln(f"SPEEDO METER")
-            printer.textln(f"Nilai Pengujian : {float(dt_speed_value)} rpm")
-            printer.textln(f"Status Pengujian : {'Lulus' if int(dt_speed_flag) == 1 else 'Tidak Lulus' if int(dt_speed_flag) == 0 else 'Belum Diuji'}")
-            printer.textln("  ")
-            printer.textln("================================================================")
-            printer.cut()
+    #         printer.image("assets/images/logo-dishub.png")
+    #         printer.image("assets/images/logo-pandeglang.png")
+    #         printer.textln(" \n ")
+    #         printer.textln("VEHICLE INSPECTION INTEGRATION SYSTEM")
+    #         printer.textln("SPEEDO METER")
+    #         printer.textln("================================================================")
+    #         printer.text(f"No Antrian: {dt_no_antri}\t")
+    #         printer.text(f"No Reg: {dt_no_pol}\t")
+    #         printer.textln(f"No Uji: {dt_no_uji}")
+    #         printer.textln("  ")
+    #         printer.text(f"Nama: {dt_nama}\t")
+    #         printer.textln(f"Jenis Kendaraan: {dt_jns_kend}")
+    #         printer.textln("  ")
+    #         printer.textln(f"Tanggal: {print_datetime}")
+    #         printer.textln("  ")
+    #         printer.textln(f"SPEEDO METER")
+    #         printer.textln(f"Nilai Pengujian : {float(dt_speed_value)} rpm")
+    #         printer.textln(f"Status Pengujian : {'Lulus' if int(dt_speed_flag) == 1 else 'Tidak Lulus' if int(dt_speed_flag) == 0 else 'Belum Diuji'}")
+    #         printer.textln("  ")
+    #         printer.textln("================================================================")
+    #         printer.cut()
 
-        except Exception as e:
-            toast_msg = f'Gagal mencetak menggunakan Thermal Printer'
-            toast(toast_msg)
-            Logger.error(f"{self.name}: {toast_msg}, {e}")  
+    #     except Exception as e:
+    #         toast_msg = f'Gagal mencetak menggunakan Thermal Printer'
+    #         toast(toast_msg)
+    #         Logger.error(f"{self.name}: {toast_msg}, {e}")  
             
     def open_screen_main(self):
         global flag_play        
@@ -1733,50 +1730,50 @@ class ScreenSideSlipMeter(MDScreen):
             toast(toast_msg)
             Logger.error(f"{self.name}: {toast_msg}, {e}")  
 
-    def exec_print_thermal(self):
-        global flag_play
-        global count_starting, count_get_data
-        global mydb, db_antrian
-        global dt_no_antri, dt_no_pol, dt_no_uji, dt_nama, dt_jns_kend
-        global dt_speed_flag
+    # def exec_print_thermal(self):
+    #     global flag_play
+    #     global count_starting, count_get_data
+    #     global mydb, db_antrian
+    #     global dt_no_antri, dt_no_pol, dt_no_uji, dt_nama, dt_jns_kend
+    #     global dt_speed_flag
 
-        try:
-            """ 9600 Baud, 8N1, Flow Control Enabled """
-            printer = Serial(devfile=PRINTER_THERM_COM,
-                    baudrate=PRINTER_THERM_BAUD,
-                    bytesize=PRINTER_THERM_BYTESIZE,
-                    parity=PRINTER_THERM_PARITY,
-                    stopbits=PRINTER_THERM_STOPBITS,
-                    timeout=PRINTER_THERM_TIMEOUT,
-                    dsrdtr=PRINTER_THERM_DSRDTR,)
-            print_datetime = str(time.strftime("%d %B %Y %H:%M:%S", time.localtime()))
+    #     try:
+    #         """ 9600 Baud, 8N1, Flow Control Enabled """
+    #         printer = Serial(devfile=PRINTER_THERM_COM,
+    #                 baudrate=PRINTER_THERM_BAUD,
+    #                 bytesize=PRINTER_THERM_BYTESIZE,
+    #                 parity=PRINTER_THERM_PARITY,
+    #                 stopbits=PRINTER_THERM_STOPBITS,
+    #                 timeout=PRINTER_THERM_TIMEOUT,
+    #                 dsrdtr=PRINTER_THERM_DSRDTR,)
+    #         print_datetime = str(time.strftime("%d %B %Y %H:%M:%S", time.localtime()))
             
-            printer.image("assets/images/logo-dishub.png")
-            printer.image("assets/images/logo-pandeglang.png")
-            printer.textln(" \n ")
-            printer.textln("VEHICLE INSPECTION INTEGRATION SYSTEM")
-            printer.textln("SIDESLIP TESTER")
-            printer.textln("================================================================")
-            printer.text(f"No Antrian: {dt_no_antri}\t")
-            printer.text(f"No Reg: {dt_no_pol}\t")
-            printer.textln(f"No Uji: {dt_no_uji}")
-            printer.textln("  ")
-            printer.text(f"Nama: {dt_nama}\t")
-            printer.textln(f"Jenis Kendaraan: {dt_jns_kend}")
-            printer.textln("  ")
-            printer.textln(f"Tanggal: {print_datetime}")
-            printer.textln("  ")
-            printer.textln(f"SIDESLIP TESTER")
-            printer.textln(f"Nilai Pengujian : {float(dt_sideslip_value)} mm")
-            printer.textln(f"Status Pengujian : {'Lulus' if int(dt_sideslip_flag) == 1 else 'Tidak Lulus' if int(dt_sideslip_flag) == 0 else 'Belum Diuji'}")
-            printer.textln("  ")
-            printer.textln("================================================================")
-            printer.cut()
+    #         printer.image("assets/images/logo-dishub.png")
+    #         printer.image("assets/images/logo-pandeglang.png")
+    #         printer.textln(" \n ")
+    #         printer.textln("VEHICLE INSPECTION INTEGRATION SYSTEM")
+    #         printer.textln("SIDESLIP TESTER")
+    #         printer.textln("================================================================")
+    #         printer.text(f"No Antrian: {dt_no_antri}\t")
+    #         printer.text(f"No Reg: {dt_no_pol}\t")
+    #         printer.textln(f"No Uji: {dt_no_uji}")
+    #         printer.textln("  ")
+    #         printer.text(f"Nama: {dt_nama}\t")
+    #         printer.textln(f"Jenis Kendaraan: {dt_jns_kend}")
+    #         printer.textln("  ")
+    #         printer.textln(f"Tanggal: {print_datetime}")
+    #         printer.textln("  ")
+    #         printer.textln(f"SIDESLIP TESTER")
+    #         printer.textln(f"Nilai Pengujian : {float(dt_sideslip_value)} mm")
+    #         printer.textln(f"Status Pengujian : {'Lulus' if int(dt_sideslip_flag) == 1 else 'Tidak Lulus' if int(dt_sideslip_flag) == 0 else 'Belum Diuji'}")
+    #         printer.textln("  ")
+    #         printer.textln("================================================================")
+    #         printer.cut()
 
-        except Exception as e:
-            toast_msg = f'Gagal mencetak menggunakan Thermal Printer'
-            toast(toast_msg)
-            Logger.error(f"{self.name}: {toast_msg}, {e}")  
+    #     except Exception as e:
+    #         toast_msg = f'Gagal mencetak menggunakan Thermal Printer'
+    #         toast(toast_msg)
+    #         Logger.error(f"{self.name}: {toast_msg}, {e}")  
 
     def open_screen_main(self):
         global flag_play        
