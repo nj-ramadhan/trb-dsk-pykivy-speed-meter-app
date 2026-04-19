@@ -208,7 +208,7 @@ class ScreenLogin(MDScreen):
             
             mycursor = mydb.cursor()
             # Query disamakan dengan aplikasi lainnya
-            query = "SELECT id, name, email, password FROM web_users WHERE email = %s AND tipe_user = '2'"
+            query = "SELECT id, name, email, password FROM web_users WHERE email = %s AND tipe_user = '5'"
             
             mycursor.execute(query, (input_email,))
             myresult = mycursor.fetchone()
@@ -1408,10 +1408,9 @@ class ScreenSpeedMeter(MDScreen):
             sql_val = (sql_speed_flag, dt_speed_value, dt_id_user, now, dt_no_antri)
             tb_speed_data.execute(sql, sql_val)
             mydb.commit()
+            toast("Data Speedometer Berhasil Disimpan")
             self.open_screen_main()
-
-            self.exec_print()
-
+            
             self.ids.bt_save.disabled = True
         
         except Exception as e:
@@ -1640,10 +1639,8 @@ class ScreenSideSlipMeter(MDScreen):
             sql_val = (sql_sideslip_flag, dt_sideslip_value, dt_id_user, now, dt_no_antri)
             tb_sideslip_data.execute(sql, sql_val)
             mydb.commit()
+            toast("Data sideslipmeter Berhasil Disimpan")
             self.open_screen_main()
-
-            self.exec_print()
-
             self.ids.bt_save.disabled = True
 
         except Exception as e:
