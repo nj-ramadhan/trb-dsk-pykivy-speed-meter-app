@@ -34,7 +34,7 @@ from kivy.metrics import dp
 from kivymd.toast import toast
 from kivymd.app import MDApp
 import numpy as np
-import configparser, hashlib, mysql.connector
+import configparser, mysql.connector
 from pymodbus.client import ModbusTcpClient
 from fpdf import FPDF
 
