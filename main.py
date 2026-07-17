@@ -1,5 +1,7 @@
 import datetime
 import os, sys, time
+import logging
+from logging.handlers import TimedRotatingFileHandler
 
 if getattr(sys, 'frozen', False):
     application_path = os.path.dirname(sys.executable)
@@ -15,6 +17,22 @@ else:
 
 logger_name = f'app.log'
 logger_dir = os.path.join(application_path, "logs")
+os.makedirs(logger_dir, exist_ok=True)
+
+audit_logger = logging.getLogger('viims_audit')
+audit_logger.setLevel(logging.INFO)
+audit_logger.propagate = False
+_audit_handler = TimedRotatingFileHandler(
+    os.path.join(logger_dir, logger_name), when='midnight', backupCount=30, encoding='utf-8')
+_audit_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
+audit_logger.addHandler(_audit_handler)
+
+def log_audit(event, detail=""):
+    try:
+        safe_detail = str(detail).replace("\r", " ").replace("\n", " ")
+        audit_logger.info(f"{event} | {safe_detail}" if safe_detail else event)
+    except Exception:
+        pass
 
 from kivy.config import Config
 Config.set('kivy', 'keyboard_mode', 'system')
@@ -66,8 +84,8 @@ LB_UNIT_ADDRESS = config['app']['LB_UNIT_ADDRESS']
 
 # SQL setting
 DB_HOST = "187.77.112.162"
-DB_USER = "Pndujikir2026!"
-DB_PASSWORD = "@PndKir2026!"
+DB_USER = "IntegrasiPnd@"
+DB_PASSWORD = "@PndIntegrated26"
 
 DB_NAME = "pkbpandeglang"
 TB_DATA = "tb_cekident"
@@ -104,6 +122,8 @@ MODBUS_CLIENT = ModbusTcpClient(MODBUS_IP_PLC)
 REGISTER_DATA_SPEED = int(config['setting']['REGISTER_DATA_SPEED']) # 1512 = V1000
 REGISTER_DATA_SIDE_SLIP = int(config['setting']['REGISTER_DATA_SIDE_SLIP']) # 1612 = V1100
 
+SIMULATION_MODE = bool(int(config['setting']['SIMULATION_MODE']))
+
 ## sensor setting
 SENSOR_ENCODER_PPR = float(config['setting']['SENSOR_ENCODER_PPR']) # in mm
 SENSOR_LENGTH = float(config['setting']['SENSOR_LENGTH']) # in mm
@@ -112,6 +132,8 @@ SENSOR_LENGTH = float(config['setting']['SENSOR_LENGTH']) # in mm
 STANDARD_MIN_SPEED = float(config['standard']['STANDARD_MIN_SPEED']) # in rpm
 STANDARD_MAX_SPEED = float(config['standard']['STANDARD_MAX_SPEED']) # in rpm
 STANDARD_MAX_SIDESLIP = float(config['standard']['STANDARD_MAX_SIDESLIP']) # in mm
+
+mydb = None
 
 class ScreenHome(MDScreen):
     def __init__(self, **kwargs):
@@ -204,35 +226,44 @@ class ScreenLogin(MDScreen):
         try:
             screen_main.exec_reload_database()
             input_email = self.ids.tx_username.text  # Digunakan sebagai input Email
-            input_password = self.ids.tx_password.text        
-            
+            input_password = self.ids.tx_password.text
+
+            if mydb is None:
+                toast("Gagal masuk: tidak dapat terhubung ke database")
+                log_audit("LOGIN_FAILED", f"email={input_email} reason=db_not_connected")
+                return
+
             mycursor = mydb.cursor()
             # Query disamakan dengan aplikasi lainnya
-            query = "SELECT id, name, email, password FROM web_users WHERE email = %s AND tipe_user = '5'"
-            
+            query = "SELECT id_sumber, name, email, password FROM web_users WHERE email = %s AND tipe_user = '5'"
+
             mycursor.execute(query, (input_email,))
             myresult = mycursor.fetchone()
-            
+
             if myresult:
-                db_id, db_name, db_email, db_hashed_password = myresult
+                db_id_sumber, db_name, db_email, db_hashed_password = myresult
 
                 if bcrypt.checkpw(input_password.encode('utf-8'), db_hashed_password.encode('utf-8')):
                     toast(f"Berhasil Masuk, Selamat Datang {db_name}")
-                    dt_id_user = db_id
+                    dt_id_user = db_id_sumber
                     dt_user = db_name
                     dt_foto_user = "" # web_users tidak memiliki kolom foto
-                    
+
                     self.ids.tx_username.text = ""
-                    self.ids.tx_password.text = "" 
+                    self.ids.tx_password.text = ""
                     self.screen_manager.current = 'screen_main'
+                    log_audit("LOGIN_SUCCESS", f"user={db_name} id_user={dt_id_user} email={input_email}")
                 else:
                     toast("Maaf username dan password tidak sesuai")
+                    log_audit("LOGIN_FAILED", f"email={input_email} reason=wrong_password")
             else:
                 toast("Maaf username dan password tidak sesuai")
+                log_audit("LOGIN_FAILED", f"email={input_email} reason=not_found")
 
         except Exception as e:
             Logger.error(f"Login Error: {e}")
             toast(f"Gagal masuk: {e}")
+            log_audit("LOGIN_ERROR", f"email={input_email} error={e}")
 
     def exec_navigate_home(self):
         try:
@@ -278,12 +309,13 @@ class ScreenMain(MDScreen):
         global dt_speed_flag, dt_speed_value
         global dt_sideslip_flag, dt_sideslip_value
         global dt_dash_pendaftaran, dt_dash_belum_uji, dt_dash_sudah_uji
-        
+        global flag_conn_stat_prev
 
         count_starting = COUNT_STARTING_SPEED
         count_get_data = COUNT_ACQUISITION_SPEED
 
         flag_conn_stat = flag_play = flag_cylinder = False
+        flag_conn_stat_prev = None
         dt_user = dt_foto_user = dt_no_antri = dt_no_pol = dt_no_uji = dt_sts_uji = dt_nama = ""
         dt_merk = dt_type = dt_jns_kend = dt_jbb = dt_brt_ksg = dt_bhn_bkr = dt_warna = dt_chasis = dt_no_mesin = ""
         dt_id_user = 1
@@ -321,8 +353,6 @@ class ScreenMain(MDScreen):
             screen_login = self.screen_manager.get_screen('screen_login')
             screen_menu = self.screen_manager.get_screen('screen_menu')
             screen_calibration = self.screen_manager.get_screen('screen_calibration')
-            screen_add_data = self.screen_manager.get_screen('screen_add_data')
-            screen_add_queue = self.screen_manager.get_screen('screen_add_queue')
 
             screen_speed_meter = self.screen_manager.get_screen('screen_speed_meter')
             screen_sideslip_meter = self.screen_manager.get_screen('screen_sideslip_meter')
@@ -337,10 +367,6 @@ class ScreenMain(MDScreen):
             screen_menu.ids.lb_date.text = str(time.strftime("%d/%m/%Y", time.localtime()))
             screen_calibration.ids.lb_time.text = str(time.strftime("%H:%M:%S", time.localtime()))
             screen_calibration.ids.lb_date.text = str(time.strftime("%d/%m/%Y", time.localtime()))
-            screen_add_data.ids.lb_time.text = str(time.strftime("%H:%M:%S", time.localtime()))
-            screen_add_data.ids.lb_date.text = str(time.strftime("%d/%m/%Y", time.localtime()))
-            screen_add_queue.ids.lb_time.text = str(time.strftime("%H:%M:%S", time.localtime()))
-            screen_add_queue.ids.lb_date.text = str(time.strftime("%d/%m/%Y", time.localtime()))
 
             screen_speed_meter.ids.lb_time.text = str(time.strftime("%H:%M:%S", time.localtime()))
             screen_speed_meter.ids.lb_date.text = str(time.strftime("%d/%m/%Y", time.localtime()))
@@ -380,10 +406,6 @@ class ScreenMain(MDScreen):
                 screen_menu.ids.lb_comm.text = 'PLC Tidak Terhubung'
                 screen_calibration.ids.lb_comm.color = colors['Red']['A200']
                 screen_calibration.ids.lb_comm.text = 'PLC Tidak Terhubung'
-                screen_add_data.ids.lb_comm.color = colors['Red']['A200']
-                screen_add_data.ids.lb_comm.text = 'PLC Tidak Terhubung'
-                screen_add_queue.ids.lb_comm.color = colors['Red']['A200']
-                screen_add_queue.ids.lb_comm.text = 'PLC Tidak Terhubung'
 
                 screen_speed_meter.ids.lb_comm.color = colors['Red']['A200']
                 screen_speed_meter.ids.lb_comm.text = 'PLC Tidak Terhubung'
@@ -401,10 +423,6 @@ class ScreenMain(MDScreen):
                 screen_menu.ids.lb_comm.text = 'PLC Terhubung'
                 screen_calibration.ids.lb_comm.color = colors['Blue']['200']
                 screen_calibration.ids.lb_comm.text = 'PLC Terhubung'
-                screen_add_data.ids.lb_comm.color = colors['Blue']['200']
-                screen_add_data.ids.lb_comm.text = 'PLC Terhubung'
-                screen_add_queue.ids.lb_comm.color = colors['Blue']['200']
-                screen_add_queue.ids.lb_comm.text = 'PLC Terhubung'
 
                 screen_speed_meter.ids.lb_comm.color = colors['Blue']['200']
                 screen_speed_meter.ids.lb_comm.text = 'PLC Terhubung'
@@ -434,7 +452,7 @@ class ScreenMain(MDScreen):
                     screen_speed_meter.ids.lb_info.text = "Silahkan Injak Pedal Gas Sesuai Arahan"
 
                     screen_sideslip_meter.ids.lb_test_subtitle.text = "MEMULAI PENGUKURAN"
-                    screen_sideslip_meter.ids.lb_sideslip.text = str(count_starting)
+                    screen_sideslip_meter.ids.lb_sideslip_val.text = str(count_starting)
                     screen_sideslip_meter.ids.lb_info.text = "Silahkan Gerakkan Kendaraan Anda Tanpa Memegang Kemudi"
 
             if(count_get_data <= 0):
@@ -468,13 +486,17 @@ class ScreenMain(MDScreen):
                 screen_sideslip_meter.ids.lb_test_result.text = ""
 
             if(self.screen_manager.current == 'screen_calibration'):
-                MODBUS_CLIENT.connect()
-                speed_registers = MODBUS_CLIENT.read_holding_registers(REGISTER_DATA_SPEED, count=1, slave=1)
-                sideslip_registers = MODBUS_CLIENT.read_holding_registers(REGISTER_DATA_SIDE_SLIP, count=1, slave=1)
-                MODBUS_CLIENT.close()
+                if SIMULATION_MODE:
+                    dt_speed_value = np.round(np.random.uniform(STANDARD_MIN_SPEED - 5, STANDARD_MAX_SPEED + 5), 2)
+                    dt_sideslip_value = np.round(np.random.uniform(-STANDARD_MAX_SIDESLIP - 3, STANDARD_MAX_SIDESLIP + 3), 2)
+                else:
+                    MODBUS_CLIENT.connect()
+                    speed_registers = MODBUS_CLIENT.read_holding_registers(REGISTER_DATA_SPEED, count=1, slave=1)
+                    sideslip_registers = MODBUS_CLIENT.read_holding_registers(REGISTER_DATA_SIDE_SLIP, count=1, slave=1)
+                    MODBUS_CLIENT.close()
 
-                dt_speed_value = np.round(self.unsigned_to_signed(speed_registers.registers[0]) / 10, 2) #dc
-                dt_sideslip_value = np.round(self.unsigned_to_signed(sideslip_registers.registers[0]) / 10, 2) #dc
+                    dt_speed_value = np.round(self.unsigned_to_signed(speed_registers.registers[0]) / 10, 2) #dc
+                    dt_sideslip_value = np.round(self.unsigned_to_signed(sideslip_registers.registers[0]) / 10, 2) #dc
 
                 screen_calibration.ids.lb_speed_val.text = str(dt_speed_value)
                 screen_calibration.ids.lb_sideslip_val.text = str(dt_sideslip_value)
@@ -489,8 +511,6 @@ class ScreenMain(MDScreen):
             screen_login.ids.lb_operator.text = f'Login Sebagai: \n{dt_user}' if dt_user != '' else 'Silahkan Login'
             screen_menu.ids.lb_operator.text = f'Login Sebagai: \n{dt_user}' if dt_user != '' else 'Silahkan Login'
             screen_calibration.ids.lb_operator.text = f'Login Sebagai: \n{dt_user}' if dt_user != '' else 'Silahkan Login'
-            screen_add_data.ids.lb_operator.text = f'Login Sebagai: \n{dt_user}' if dt_user != '' else 'Silahkan Login'
-            screen_add_queue.ids.lb_operator.text = f'Login Sebagai: \n{dt_user}' if dt_user != '' else 'Silahkan Login'
 
             screen_speed_meter.ids.lb_operator.text = f'Login Sebagai: \n{dt_user}' if dt_user != '' else 'Silahkan Login'
             screen_sideslip_meter.ids.lb_operator.text = f'Login Sebagai: \n{dt_user}' if dt_user != '' else 'Silahkan Login'
@@ -510,18 +530,26 @@ class ScreenMain(MDScreen):
             Logger.error(f"{self.name}: {toast_msg}, {e}")
 
     def regular_update_connection(self, dt):
-        global flag_conn_stat
+        global flag_conn_stat, flag_conn_stat_prev
 
-        try:
-            MODBUS_CLIENT.connect()
-            flag_conn_stat = MODBUS_CLIENT.connected
-            MODBUS_CLIENT.close()     
-            
-        except Exception as e:
-            toast_msg = f'Gagal Memperbaharui Koneksi'
-            toast(toast_msg)
-            Logger.error(f"{self.name}: {toast_msg}, {e}")  
-            flag_conn_stat = False
+        if SIMULATION_MODE:
+            flag_conn_stat = True
+        else:
+            try:
+                MODBUS_CLIENT.connect()
+                flag_conn_stat = MODBUS_CLIENT.connected
+                MODBUS_CLIENT.close()
+
+            except Exception as e:
+                toast_msg = f'Gagal Memperbaharui Koneksi'
+                toast(toast_msg)
+                Logger.error(f"{self.name}: {toast_msg}, {e}")
+                flag_conn_stat = False
+
+        if flag_conn_stat != flag_conn_stat_prev:
+            log_audit("PLC_CONNECTED" if flag_conn_stat else "PLC_DISCONNECTED",
+                      f"simulation={SIMULATION_MODE} ip={MODBUS_IP_PLC}")
+            flag_conn_stat_prev = flag_conn_stat
 
     def unsigned_to_signed(self, val):
         if val >= 32768:
@@ -543,14 +571,17 @@ class ScreenMain(MDScreen):
                 flag_play = False
                 Clock.unschedule(self.regular_get_data)
 
-            if flag_conn_stat:
+            if SIMULATION_MODE:
+                dt_speed_value = np.round(np.random.uniform(STANDARD_MIN_SPEED - 5, STANDARD_MAX_SPEED + 5), 2)
+                dt_sideslip_value = np.round(abs(np.random.uniform(-STANDARD_MAX_SIDESLIP - 3, STANDARD_MAX_SIDESLIP + 3)), 2)
+            elif flag_conn_stat:
                 MODBUS_CLIENT.connect()
                 speed_registers = MODBUS_CLIENT.read_holding_registers(REGISTER_DATA_SPEED, count=1, slave=1)
                 sideslip_registers = MODBUS_CLIENT.read_holding_registers(REGISTER_DATA_SIDE_SLIP, count=1, slave=1)
                 MODBUS_CLIENT.close()
 
                 dt_speed_value = np.round(self.unsigned_to_signed(speed_registers.registers[0]) / 10, 2)
-                dt_sideslip_value = abs(np.round(self.unsigned_to_signed(sideslip_registers.registers[0]) / 10, 2)) 
+                dt_sideslip_value = abs(np.round(self.unsigned_to_signed(sideslip_registers.registers[0]) / 10, 2))
         except Exception as e:
             toast_msg = f'Gagal Mengambil Data dari PLC'
             toast(toast_msg)
@@ -560,10 +591,12 @@ class ScreenMain(MDScreen):
         global mydb
         try:
             mydb = mysql.connector.connect(host = DB_HOST,user = DB_USER,password = DB_PASSWORD, database = DB_NAME)
+            log_audit("DB_CONNECTED", f"host={DB_HOST} db={DB_NAME}")
         except Exception as e:
             toast_msg = f'Gagal Menginisiasi Database'
             toast(toast_msg)
-            Logger.error(f"{self.name}: {toast_msg}, {e}") 
+            Logger.error(f"{self.name}: {toast_msg}, {e}")
+            log_audit("DB_CONNECTION_FAILED", f"host={DB_HOST} error={e}") 
 
     def exec_reload_table(self):
         global mydb, db_antrian
@@ -614,7 +647,7 @@ class ScreenMain(MDScreen):
                     db_pendaftaran_array = np.array(result_tb_antrian)
                     dt_dash_belum_uji = db_pendaftaran_array[:,0].size
                 else:
-                    db_antrian = np.array([])
+                    db_antrian = np.empty((13, 0))
                     dt_dash_belum_uji = 0
                 
                 dt_dash_pendaftaran = dt_dash_antri
@@ -699,6 +732,7 @@ class ScreenMain(MDScreen):
     def exec_logout(self):
         global dt_user
 
+        log_audit("LOGOUT", f"user={dt_user}")
         dt_user = ""
         self.screen_manager.current = 'screen_login'
 
@@ -804,7 +838,7 @@ class ScreenCalibration(MDScreen):
     def exec_calibrate_default_ppr_speed(self):
         global flag_conn_stat
         try:
-            if flag_conn_stat:
+            if flag_conn_stat and not SIMULATION_MODE:
                 MODBUS_CLIENT.connect()
                 MODBUS_CLIENT.write_coil(3077, True, slave=1) #M5
                 MODBUS_CLIENT.close()
@@ -816,7 +850,7 @@ class ScreenCalibration(MDScreen):
     def rel_calibrate_default_ppr_speed(self):
         global flag_conn_stat
         try:
-            if flag_conn_stat:
+            if flag_conn_stat and not SIMULATION_MODE:
                 MODBUS_CLIENT.connect()
                 MODBUS_CLIENT.write_coil(3077, False, slave=1) #M5
                 MODBUS_CLIENT.close()
@@ -828,7 +862,7 @@ class ScreenCalibration(MDScreen):
     def exec_calibrate_ppr_speed(self):
         global flag_conn_stat
         try:
-            if flag_conn_stat:
+            if flag_conn_stat and not SIMULATION_MODE:
                 MODBUS_CLIENT.connect()
                 MODBUS_CLIENT.write_register(1522, int(self.ids.tx_calibrate_ppr_speed.text), slave=1) #V1010
                 MODBUS_CLIENT.close()
@@ -840,7 +874,7 @@ class ScreenCalibration(MDScreen):
     def exec_calibrate_default_ppr_sideslip(self):
         global flag_conn_stat
         try:
-            if flag_conn_stat:
+            if flag_conn_stat and not SIMULATION_MODE:
                 MODBUS_CLIENT.connect()
                 MODBUS_CLIENT.write_coil(3067, True, slave=1) #M15
                 MODBUS_CLIENT.close()
@@ -852,7 +886,7 @@ class ScreenCalibration(MDScreen):
     def rel_calibrate_default_ppr_sideslip(self):
         global flag_conn_stat
         try:
-            if flag_conn_stat:
+            if flag_conn_stat and not SIMULATION_MODE:
                 MODBUS_CLIENT.connect()
                 MODBUS_CLIENT.write_coil(3067, False, slave=1) #M15
                 MODBUS_CLIENT.close()
@@ -864,7 +898,7 @@ class ScreenCalibration(MDScreen):
     def exec_calibrate_ppr_sideslip(self):
         global flag_conn_stat
         try:
-            if flag_conn_stat:
+            if flag_conn_stat and not SIMULATION_MODE:
                 MODBUS_CLIENT.connect()
                 MODBUS_CLIENT.write_register(1622, int(self.ids.tx_calibrate_ppr_sideslip.text), slave=1) #V1110
                 MODBUS_CLIENT.close()
@@ -879,7 +913,7 @@ class ScreenCalibration(MDScreen):
         if(not flag_cylinder):
             flag_cylinder = True
         try:
-            if flag_conn_stat:
+            if flag_conn_stat and not SIMULATION_MODE:
                 MODBUS_CLIENT.connect()
                 MODBUS_CLIENT.write_coil(3073, flag_cylinder, slave=1) #M1
                 MODBUS_CLIENT.close()
@@ -892,7 +926,7 @@ class ScreenCalibration(MDScreen):
         if(flag_cylinder):
             flag_cylinder = False
         try:
-            if flag_conn_stat:
+            if flag_conn_stat and not SIMULATION_MODE:
                 MODBUS_CLIENT.connect()
                 MODBUS_CLIENT.write_coil(3074, not flag_cylinder, slave=1) #M2
                 MODBUS_CLIENT.close()
@@ -903,7 +937,7 @@ class ScreenCalibration(MDScreen):
         global flag_conn_stat
 
         try:
-            if flag_conn_stat:
+            if flag_conn_stat and not SIMULATION_MODE:
                 MODBUS_CLIENT.connect()
                 MODBUS_CLIENT.write_coil(3073, False, slave=1) #M1
                 MODBUS_CLIENT.write_coil(3074, False, slave=1) #M3
@@ -1259,6 +1293,7 @@ class ScreenMenu(MDScreen):
             Clock.schedule_interval(screen_main.regular_get_data, GET_DATA_INTERVAL)
             self.open_screen_speed_meter()
             flag_play = True
+            log_audit("TEST_START_SPEED", f"antrian={dt_no_antri} nopol={dt_no_pol} user={dt_user} simulation={SIMULATION_MODE}")
 
     def exec_start_sideslip(self):
         global flag_play
@@ -1273,6 +1308,7 @@ class ScreenMenu(MDScreen):
             Clock.schedule_interval(screen_main.regular_get_data, GET_DATA_INTERVAL)
             self.open_screen_sideslip_meter()
             flag_play = True
+            log_audit("TEST_START_SIDESLIP", f"antrian={dt_no_antri} nopol={dt_no_pol} user={dt_user} simulation={SIMULATION_MODE}")
 
     def exec_navigate_main(self):
         try:
@@ -1327,7 +1363,7 @@ class ScreenSpeedMeter(MDScreen):
         if(not flag_cylinder):
             flag_cylinder = True
         try:
-            if flag_conn_stat:
+            if flag_conn_stat and not SIMULATION_MODE:
                 MODBUS_CLIENT.connect()
                 MODBUS_CLIENT.write_coil(3073, flag_cylinder, slave=1) #M1
                 MODBUS_CLIENT.close()
@@ -1340,7 +1376,7 @@ class ScreenSpeedMeter(MDScreen):
         if(flag_cylinder):
             flag_cylinder = False
         try:
-            if flag_conn_stat:
+            if flag_conn_stat and not SIMULATION_MODE:
                 MODBUS_CLIENT.connect()
                 MODBUS_CLIENT.write_coil(3074, not flag_cylinder, slave=1) #M2
                 MODBUS_CLIENT.close()
@@ -1351,7 +1387,7 @@ class ScreenSpeedMeter(MDScreen):
         global flag_conn_stat
 
         try:
-            if flag_conn_stat:
+            if flag_conn_stat and not SIMULATION_MODE:
                 MODBUS_CLIENT.connect()
                 MODBUS_CLIENT.write_coil(3073, False, slave=1) #M1
                 MODBUS_CLIENT.write_coil(3074, False, slave=1) #M3
@@ -1409,14 +1445,17 @@ class ScreenSpeedMeter(MDScreen):
             tb_speed_data.execute(sql, sql_val)
             mydb.commit()
             toast("Data Speedometer Berhasil Disimpan")
+            log_audit("SAVE_SPEED", f"antrian={dt_no_antri} nopol={dt_no_pol} value={dt_speed_value} flag={dt_speed_flag} user={dt_id_user} simulation={SIMULATION_MODE}")
+            self.exec_print_pdf()
             self.open_screen_main()
-            
+
             self.ids.bt_save.disabled = True
-        
+
         except Exception as e:
             toast_msg = f'Gagal Menyimpan data'
             toast(toast_msg)
-            Logger.error(f"{self.name}: {toast_msg}, {e}")  
+            Logger.error(f"{self.name}: {toast_msg}, {e}")
+            log_audit("SAVE_SPEED_FAILED", f"antrian={dt_no_antri} error={e}")
 
     def exec_print(self):
         try:
@@ -1427,8 +1466,7 @@ class ScreenSpeedMeter(MDScreen):
             mydb.commit()
             db_status = np.array(result_tb_status).T
             dt_speed_flag = int(db_status[0])
-            
-            self.exec_print_thermal()
+
             self.exec_print_pdf()
 
             self.ids.bt_print.disabled = True
@@ -1478,7 +1516,7 @@ class ScreenSpeedMeter(MDScreen):
 
             folder_name = f"Hasil_Uji_VIIS_Speedo_Meter_{time.strftime('%Y-%m-%d', time.localtime())}"
             date_folder_path = os.path.join(documents_dir, folder_name)
-            
+
             if not os.path.exists(date_folder_path):
                 os.makedirs(date_folder_path)
                 toast(f"Folder created: {date_folder_path}")
@@ -1491,11 +1529,13 @@ class ScreenSpeedMeter(MDScreen):
             pdf.output(pdf_path, 'F')
             toast(f"PDF saved to: {pdf_path}")
             os.startfile(pdf_path)
+            log_audit("PRINT_PDF_SPEED", f"antrian={dt_no_antri} nopol={dt_no_pol} path={pdf_path}")
 
         except Exception as e:
             toast_msg = f'Gagal menyimpan ke pdf'
             toast(toast_msg)
-            Logger.error(f"{self.name}: {toast_msg}, {e}")  
+            Logger.error(f"{self.name}: {toast_msg}, {e}")
+            log_audit("PRINT_PDF_SPEED_FAILED", f"antrian={dt_no_antri} error={e}")
 
     # def exec_print_thermal(self):
     #     global flag_play
@@ -1640,13 +1680,16 @@ class ScreenSideSlipMeter(MDScreen):
             tb_sideslip_data.execute(sql, sql_val)
             mydb.commit()
             toast("Data sideslipmeter Berhasil Disimpan")
+            log_audit("SAVE_SIDESLIP", f"antrian={dt_no_antri} nopol={dt_no_pol} value={dt_sideslip_value} flag={dt_sideslip_flag} user={dt_id_user} simulation={SIMULATION_MODE}")
+            self.exec_print_pdf()
             self.open_screen_main()
             self.ids.bt_save.disabled = True
 
         except Exception as e:
             toast_msg = f'Gagal menyimpan data'
             toast(toast_msg)
-            Logger.error(f"{self.name}: {toast_msg}, {e}") 
+            Logger.error(f"{self.name}: {toast_msg}, {e}")
+            log_audit("SAVE_SIDESLIP_FAILED", f"antrian={dt_no_antri} error={e}")
 
     def exec_print(self):
         try:
@@ -1657,8 +1700,7 @@ class ScreenSideSlipMeter(MDScreen):
             mydb.commit()
             db_status = np.array(result_tb_status).T
             dt_sideslip_flag = int(db_status[0])
-            
-            self.exec_print_thermal()
+
             self.exec_print_pdf()
 
             self.ids.bt_print.disabled = True
@@ -1721,11 +1763,13 @@ class ScreenSideSlipMeter(MDScreen):
             pdf.output(pdf_path, 'F')
             toast(f"PDF saved to: {pdf_path}")
             os.startfile(pdf_path)
+            log_audit("PRINT_PDF_SIDESLIP", f"antrian={dt_no_antri} nopol={dt_no_pol} path={pdf_path}")
 
         except Exception as e:
             toast_msg = f'Gagal menyimpan ke pdf'
             toast(toast_msg)
-            Logger.error(f"{self.name}: {toast_msg}, {e}")  
+            Logger.error(f"{self.name}: {toast_msg}, {e}")
+            log_audit("PRINT_PDF_SIDESLIP_FAILED", f"antrian={dt_no_antri} error={e}")
 
     # def exec_print_thermal(self):
     #     global flag_play
@@ -1796,6 +1840,7 @@ class SpeedMeterApp(MDApp):
 
     def build(self):
         global window_size_x, window_size_y
+        log_audit("APP_START", f"mode={running_mode} simulation={SIMULATION_MODE}")
         self.theme_cls.colors = colors
         self.theme_cls.primary_palette = "Gray"
         self.theme_cls.accent_palette = "Blue"
@@ -1911,6 +1956,9 @@ class SpeedMeterApp(MDApp):
 
         if hasattr(self, 'root'):
             self.refresh_fonts(self.root)
+
+    def on_stop(self):
+        log_audit("APP_STOP")
 
 if __name__ == '__main__':
     SpeedMeterApp().run()
