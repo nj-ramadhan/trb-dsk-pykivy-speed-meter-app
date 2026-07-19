@@ -1,6 +1,8 @@
 import datetime
 import os, sys, time
 import logging
+import tempfile
+import traceback
 from logging.handlers import TimedRotatingFileHandler
 
 if getattr(sys, 'frozen', False):
@@ -15,9 +17,60 @@ else:
         application_path = os.getcwd()
         running_mode = 'Interactive'
 
+# Catches any exception that escapes to the top (missing config keys, DLLs
+# the customer's machine lacks, permission errors, etc). Without this,
+# PyInstaller's bootloader prints "Failed to execute script 'main'" to a
+# console window that closes itself the instant the app was double-clicked,
+# so nobody ever sees why it died. This writes the traceback to disk and
+# raises a MessageBox that stays on screen regardless of how the app was
+# launched.
+def _handle_uncaught_exception(exc_type, exc_value, exc_tb):
+    trace_text = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
+    crash_filename = f"crash_{time.strftime('%Y%m%d_%H%M%S')}.log"
+
+    written_to = []
+    for folder in (application_path, tempfile.gettempdir()):
+        try:
+            crash_path = os.path.join(folder, crash_filename)
+            with open(crash_path, 'w', encoding='utf-8') as f:
+                f.write(trace_text)
+            written_to.append(crash_path)
+        except Exception:
+            pass
+
+    sys.__excepthook__(exc_type, exc_value, exc_tb)
+
+    if sys.platform == 'win32':
+        try:
+            import ctypes
+            location_msg = "\n".join(written_to) if written_to else "(gagal menyimpan file log crash)"
+            ctypes.windll.user32.MessageBoxW(
+                0,
+                f"Aplikasi berhenti karena terjadi error.\n\n{exc_type.__name__}: {exc_value}\n\n"
+                f"Detail lengkap disimpan di:\n{location_msg}\n\n"
+                f"Mohon kirimkan file tersebut ke tim support.",
+                "TRB-VIIMS - Aplikasi Berhenti (Error)",
+                0x10  # MB_ICONERROR
+            )
+        except Exception:
+            pass
+
+sys.excepthook = _handle_uncaught_exception
+
 logger_name = f'app.log'
 logger_dir = os.path.join(application_path, "logs")
-os.makedirs(logger_dir, exist_ok=True)
+try:
+    os.makedirs(logger_dir, exist_ok=True)
+    _write_test_path = os.path.join(logger_dir, ".write_test")
+    with open(_write_test_path, 'w') as _f:
+        _f.write("")
+    os.remove(_write_test_path)
+except Exception:
+    # application_path (e.g. Program Files) isn't writable by a
+    # non-admin user; fall back to a location that always is rather
+    # than crashing the whole app before it even starts.
+    logger_dir = os.path.join(tempfile.gettempdir(), "TRB-VIIMS-Pandeglang", "logs")
+    os.makedirs(logger_dir, exist_ok=True)
 
 audit_logger = logging.getLogger('viims_audit')
 audit_logger.setLevel(logging.INFO)
