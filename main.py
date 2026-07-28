@@ -188,6 +188,15 @@ STANDARD_MAX_SIDESLIP = float(config['standard']['STANDARD_MAX_SIDESLIP']) # in 
 
 mydb = None
 
+def ensure_db_connected():
+    global mydb
+    try:
+        if mydb is None or not mydb.is_connected():
+            mydb.reconnect(attempts=3, delay=1)
+    except Exception:
+        mydb = mysql.connector.connect(host=DB_HOST, user=DB_USER, password=DB_PASSWORD, database=DB_NAME, connection_timeout=5)
+        log_audit("DB_RECONNECTED", f"host={DB_HOST} db={DB_NAME}")
+
 class ScreenHome(MDScreen):
     def __init__(self, **kwargs):
         super(ScreenHome, self).__init__(**kwargs)
@@ -643,7 +652,7 @@ class ScreenMain(MDScreen):
     def exec_reload_database(self):
         global mydb
         try:
-            mydb = mysql.connector.connect(host = DB_HOST,user = DB_USER,password = DB_PASSWORD, database = DB_NAME)
+            mydb = mysql.connector.connect(host = DB_HOST,user = DB_USER,password = DB_PASSWORD, database = DB_NAME, connection_timeout=5)
             log_audit("DB_CONNECTED", f"host={DB_HOST} db={DB_NAME}")
         except Exception as e:
             toast_msg = f'Gagal Menginisiasi Database'
@@ -658,6 +667,7 @@ class ScreenMain(MDScreen):
         global window_size_x, window_size_y
 
         try:
+            ensure_db_connected()
             cursor = mydb.cursor()
             today = str(time.strftime("%Y-%m-%d", time.localtime()))
             delete_query = f"DELETE FROM {TB_DATA} WHERE DATE(tgl_daftar) != %s"
@@ -667,9 +677,10 @@ class ScreenMain(MDScreen):
         except Exception as e:
             toast_msg = f'Gagal menghapus data kemarin'
             toast(toast_msg)
-            Logger.error(f"{self.name}: {toast_msg}, {e}")  
+            Logger.error(f"{self.name}: {toast_msg}, {e}")
 
         try:
+            ensure_db_connected()
             cursor = mydb.cursor()
             cursor.execute(f"SELECT ID, DESCRIPTION FROM {TB_MERK}")
             result_tb_merk = cursor.fetchall()
@@ -1049,6 +1060,7 @@ class ScreenAddData(MDScreen):
         dt_tgl_baru_uji = str(time.strftime("%Y/%m/%d %H:%M:%S", time.localtime()))
 
         try:
+            ensure_db_connected()
             mycursor = mydb.cursor()
             sql = f"INSERT INTO {TB_DATA_MASTER} (NOUJI, NEW_NOUJI, NOPOL, MERK_ID, TYPE, idjeniskendaraan, kd_jnskendaraan, WLY, SUBJENIS_ID, JBB, BERATKOSONG, BHN_BAKAR, WARNA_KEND, STATUSUJI, statuspenerbitan, PLAT, NOKDR, NOWIL, TGL_UJI_TERAKHIR) VALUES ('{dt_temp_no_uji}','{dt_temp_no_uji_new}','{dt_temp_no_pol}','{dt_temp_id_merk}','{dt_temp_type}','{dt_temp_jenis_kendaraan}','{dt_temp_kode_jenis_kendaraan}','{dt_temp_kode_wilayah}','{dt_temp_id_subjenis}','{dt_temp_jbb}','{dt_temp_brt_ksg}','{dt_temp_bhn_bkr}','{dt_temp_warna}','{dt_temp_status_uji}','{dt_temp_status_penerbitan}','{dt_temp_no_wilayah}','{dt_temp_no_kendaraan}','{dt_temp_no_plat}','{dt_tgl_baru_uji}')"
             mycursor.execute(sql)
@@ -1155,6 +1167,7 @@ class ScreenAddQueue(MDScreen):
         global dt_temp_bhn_bkr, dt_temp_jbb, dt_temp_brt_ksg, dt_temp_daya_motor, dt_temp_tgl_uji_terakhir, dt_temp_tgl_uji_habis, dt_temp_status_uji, dt_temp_status_penerbitan, dt_temp_jenis_kendaraan, dt_temp_kode_jenis_kendaraan, dt_temp_kode_wilayah
 
         try:
+            ensure_db_connected()
             mycursor = mydb.cursor()
             if dt_find_no_pol != "" and dt_find_no_uji == "":
                 mycursor.execute(f"SELECT NOUJI, NEW_NOUJI, NOWIL, NOKDR, PLAT, NOPOL, NAMA, NOHP, ALAMAT, ID_IZIN, WLY, PROP, KABKOT, KEC, MERK_ID, SUBJENIS_ID, TYPE, TH_BUAT, SILINDER, WARNA_KEND, CHASIS, MESIN, WARNA_PLAT, BHN_BAKAR, JBB, BERATKOSONG, DAYAMOTOR, TGL_UJI_TERAKHIR, STATUSUJI, statuspenerbitan, idjeniskendaraan, kd_jnskendaraan, kodewilayah FROM {TB_DATA_MASTER} WHERE NOPOL = '{dt_find_no_pol}' ")
@@ -1242,6 +1255,7 @@ class ScreenAddQueue(MDScreen):
         global dt_temp_bhn_bkr, dt_temp_jbb, dt_temp_brt_ksg, dt_temp_daya_motor, dt_temp_tgl_uji_terakhir, dt_temp_tgl_uji_habis, dt_temp_status_uji, dt_temp_status_penerbitan, dt_temp_jenis_kendaraan, dt_temp_kode_jenis_kendaraan, dt_temp_kode_wilayah
 
         try:
+            ensure_db_connected()
             mycursor = mydb.cursor()
             mycursor.execute(f"SELECT MAX(noantrian) FROM {TB_DATA}")
             result = mycursor.fetchone()
@@ -1490,6 +1504,7 @@ class ScreenSpeedMeter(MDScreen):
 
         self.ids.bt_save.disabled = True
         try:
+            ensure_db_connected()
             tb_speed_data = mydb.cursor()
             sql = f"UPDATE {TB_DATA} SET speed_flag = %s, speed_value = %s, speed_user = %s, speed_post = %s WHERE noantrian = %s"
             sql_speed_flag = dt_speed_flag
@@ -1513,6 +1528,7 @@ class ScreenSpeedMeter(MDScreen):
     def exec_print(self):
         try:
             global dt_speed_flag
+            ensure_db_connected()
             tb_status = mydb.cursor()
             tb_status.execute(f"SELECT speed_flag FROM {TB_DATA} WHERE noantrian = '{dt_no_antri}'")
             result_tb_status = tb_status.fetchone()
@@ -1540,30 +1556,72 @@ class ScreenSpeedMeter(MDScreen):
             print_datetime = str(time.strftime("%Y/%m/%d %H:%M:%S", time.localtime()))
             pdf = FPDF()
             pdf.add_page()
-            pdf.set_xy(0, 2)
-            pdf.image(f"assets/images/{IMG_LOGO_DISHUB}", w=30.0, h=0, x=20)
-            pdf.set_xy(0, 2)
-            pdf.image(f"assets/images/{IMG_LOGO_PEMKAB}", w=30.0, h=0, x=180)            
-            pdf.set_font('Arial', 'B', 24.0)
-            pdf.cell(ln=1, h=5.0, w=0)
-            pdf.cell(ln=1, h=15.0, align='C', w=0, txt="DINAS PERHUBUNGAN", border=0)
-            pdf.cell(ln=1, h=15.0, align='C', w=0, txt="UPTD PKB KAB. PANDEGLANG", border=0)
-            pdf.cell(ln=1, h=5.0, w=0)
-            pdf.set_font('Arial', 'B', 14.0)
-            pdf.cell(ln=0, h=10.0, align='L', w=0, txt=f"Tanggal: {print_datetime}", border=0)
-            pdf.cell(ln=1, h=10.0, align='R', w=0, txt=f"No Reg Kend: {dt_no_pol}", border=0)
-            pdf.cell(ln=0, h=10.0, align='L', w=0, txt=f"No Antrian: {dt_no_antri}", border=0)
-            pdf.cell(ln=1, h=10.0, align='R', w=0, txt=f"No Uji: {dt_no_uji}", border=0)
-            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Jenis Kendaraan: {dt_jns_kend}", border=0)
-            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Nama: {dt_nama}", border=0)
-            pdf.cell(ln=0, h=10.0, align='L', w=0, txt=f"JBB: {dt_jbb}", border=0)
-            pdf.cell(ln=1, h=10.0, align='R', w=0, txt=f"Berat Kosong: {float(dt_brt_ksg)}", border=0)
-            pdf.cell(ln=1, h=10.0, w=0)
-            pdf.set_font('Arial', '', 14.0)
-            pdf.cell(ln=1, h=10.0, align='L', w=80, txt=f"SPEEDO METER")
-            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Nilai Pengujian : {float(dt_speed_value)} rpm")
-            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Status Pengujian: {'Lulus' if int(dt_speed_flag) == 1 else 'Tidak Lulus' if int(dt_speed_flag) == 0 else 'Belum Diuji'}")
-            pdf.cell(ln=1, h=5.0, w=0)
+            page_w = pdf.w
+            margin = pdf.l_margin
+            content_w = page_w - 2 * margin
+
+            # --- Header ---
+            logo_left = pdf.image(f"assets/images/{IMG_LOGO_DISHUB}", x=margin, y=10, w=26.0)
+            logo_right = pdf.image(f"assets/images/{IMG_LOGO_PEMKAB}", x=page_w - margin - 26.0, y=10, w=26.0)
+            pdf.set_y(10)
+            pdf.set_font('Arial', 'B', 18)
+            pdf.cell(0, 8, text="DINAS PERHUBUNGAN", align='C', new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font('Arial', 'B', 13)
+            pdf.cell(0, 7, text="UPTD PKB KAB. PANDEGLANG", align='C', new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font('Arial', '', 11)
+            pdf.cell(0, 6, text="HASIL UJI SPEEDO METER", align='C', new_x="LMARGIN", new_y="NEXT")
+            logo_bottom = 10 + max(logo_left.rendered_height, logo_right.rendered_height)
+            pdf.set_y(max(pdf.get_y(), logo_bottom) + 3)
+            pdf.set_draw_color(120, 120, 120)
+            pdf.set_line_width(0.4)
+            pdf.line(margin, pdf.get_y(), page_w - margin, pdf.get_y())
+            pdf.ln(6)
+
+            # --- Identitas kendaraan (2 kolom) ---
+            pdf.set_font('Arial', '', 11)
+            col_w = content_w / 2
+            pdf.cell(col_w, 7, text=f"Tanggal          : {print_datetime}")
+            pdf.cell(col_w, 7, text=f"No Reg Kendaraan : {dt_no_pol}", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(col_w, 7, text=f"No Antrian       : {dt_no_antri}")
+            pdf.cell(col_w, 7, text=f"No Uji           : {dt_no_uji}", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(col_w, 7, text=f"Nama             : {dt_nama}")
+            pdf.cell(col_w, 7, text=f"JBB              : {dt_jbb} kg", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(col_w, 7, text=f"Berat Kosong     : {float(dt_brt_ksg)} kg", new_x="LMARGIN", new_y="NEXT")
+            # baris lentur - kalau jenis kendaraan panjang, teks turun ke baris berikutnya
+            pdf.multi_cell(content_w, 7, text=f"Jenis Kendaraan  : {dt_jns_kend}", align='L', new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(4)
+            pdf.set_draw_color(120, 120, 120)
+            pdf.line(margin, pdf.get_y(), page_w - margin, pdf.get_y())
+            pdf.ln(8)
+
+            # --- Hasil pengujian ---
+            pdf.set_font('Arial', 'B', 15)
+            pdf.cell(0, 8, text="SPEEDO METER", align='C', new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font('Arial', '', 12)
+            pdf.cell(0, 7, text=f"Nilai Pengujian : {float(dt_speed_value)} rpm", align='C', new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(4)
+
+            if int(dt_speed_flag) == 1:
+                status_text, fill_rgb, text_rgb = "LULUS", (211, 240, 216), (30, 120, 40)
+            elif int(dt_speed_flag) == 0:
+                status_text, fill_rgb, text_rgb = "TIDAK LULUS", (248, 210, 210), (170, 30, 30)
+            else:
+                status_text, fill_rgb, text_rgb = "BELUM DIUJI", (230, 230, 230), (90, 90, 90)
+
+            box_w = 90.0
+            pdf.set_x((page_w - box_w) / 2)
+            pdf.set_draw_color(*text_rgb)
+            pdf.set_fill_color(*fill_rgb)
+            pdf.set_text_color(*text_rgb)
+            pdf.set_font('Arial', 'B', 22)
+            pdf.cell(box_w, 16, text=status_text, align='C', border=1, fill=True)
+            pdf.set_text_color(0, 0, 0)
+            pdf.ln(24)
+
+            pdf.set_font('Arial', 'I', 8)
+            pdf.set_text_color(130, 130, 130)
+            pdf.cell(0, 5, text="Dicetak otomatis oleh sistem VIIMS", align='C')
+            pdf.set_text_color(0, 0, 0)
 
             documents_dir = os.path.join(os.environ["USERPROFILE"], "Documents")
 
@@ -1725,6 +1783,7 @@ class ScreenSideSlipMeter(MDScreen):
 
         self.ids.bt_save.disabled = True
         try:
+            ensure_db_connected()
             tb_sideslip_data = mydb.cursor()
             sql = f"UPDATE {TB_DATA} SET sideslip_flag = %s, sideslip_value = %s, sideslip_user = %s, sideslip_post = %s WHERE noantrian = %s"
             sql_sideslip_flag = dt_sideslip_flag
@@ -1747,6 +1806,7 @@ class ScreenSideSlipMeter(MDScreen):
     def exec_print(self):
         try:
             global dt_sideslip_flag
+            ensure_db_connected()
             tb_status = mydb.cursor()
             tb_status.execute(f"SELECT sideslip_flag FROM {TB_DATA} WHERE noantrian = '{dt_no_antri}'")
             result_tb_status = tb_status.fetchone()
@@ -1774,30 +1834,72 @@ class ScreenSideSlipMeter(MDScreen):
             print_datetime = str(time.strftime("%Y/%m/%d %H:%M:%S", time.localtime()))
             pdf = FPDF()
             pdf.add_page()
-            pdf.set_xy(0, 2)
-            pdf.image(f"assets/images/{IMG_LOGO_DISHUB}", w=30.0, h=0, x=20)
-            pdf.set_xy(0, 2)
-            pdf.image(f"assets/images/{IMG_LOGO_PEMKAB}", w=30.0, h=0, x=180)            
-            pdf.set_font('Arial', 'B', 24.0)
-            pdf.cell(ln=1, h=5.0, w=0)
-            pdf.cell(ln=1, h=15.0, align='C', w=0, txt="DINAS PERHUBUNGAN", border=0)
-            pdf.cell(ln=1, h=15.0, align='C', w=0, txt="UPTD PKB KAB. PANDEGLANG", border=0)
-            pdf.cell(ln=1, h=5.0, w=0)
-            pdf.set_font('Arial', 'B', 14.0)
-            pdf.cell(ln=0, h=10.0, align='L', w=0, txt=f"Tanggal: {print_datetime}", border=0)
-            pdf.cell(ln=1, h=10.0, align='R', w=0, txt=f"No Reg Kend: {dt_no_pol}", border=0)
-            pdf.cell(ln=0, h=10.0, align='L', w=0, txt=f"No Antrian: {dt_no_antri}", border=0)
-            pdf.cell(ln=1, h=10.0, align='R', w=0, txt=f"No Uji: {dt_no_uji}", border=0)
-            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Jenis Kendaraan: {dt_jns_kend}", border=0)
-            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Nama: {dt_nama}", border=0)
-            pdf.cell(ln=0, h=10.0, align='L', w=0, txt=f"JBB: {dt_jbb}", border=0)
-            pdf.cell(ln=1, h=10.0, align='R', w=0, txt=f"Berat Kosong: {float(dt_brt_ksg)}", border=0)
-            pdf.cell(ln=1, h=10.0, w=0)
-            pdf.set_font('Arial', '', 14.0)
-            pdf.cell(ln=1, h=10.0, align='L', w=80, txt=f"SIDESLIP METER")
-            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Nilai Pengujian : {float(dt_sideslip_value)} mm")
-            pdf.cell(ln=1, h=10.0, align='L', w=0, txt=f"Status Pengujian: {'Lulus' if int(dt_sideslip_flag) == 1 else 'Tidak Lulus' if int(dt_sideslip_flag) == 0 else 'Belum Diuji'}")
-            pdf.cell(ln=1, h=5.0, w=0)
+            page_w = pdf.w
+            margin = pdf.l_margin
+            content_w = page_w - 2 * margin
+
+            # --- Header ---
+            logo_left = pdf.image(f"assets/images/{IMG_LOGO_DISHUB}", x=margin, y=10, w=26.0)
+            logo_right = pdf.image(f"assets/images/{IMG_LOGO_PEMKAB}", x=page_w - margin - 26.0, y=10, w=26.0)
+            pdf.set_y(10)
+            pdf.set_font('Arial', 'B', 18)
+            pdf.cell(0, 8, text="DINAS PERHUBUNGAN", align='C', new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font('Arial', 'B', 13)
+            pdf.cell(0, 7, text="UPTD PKB KAB. PANDEGLANG", align='C', new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font('Arial', '', 11)
+            pdf.cell(0, 6, text="HASIL UJI SIDESLIP METER", align='C', new_x="LMARGIN", new_y="NEXT")
+            logo_bottom = 10 + max(logo_left.rendered_height, logo_right.rendered_height)
+            pdf.set_y(max(pdf.get_y(), logo_bottom) + 3)
+            pdf.set_draw_color(120, 120, 120)
+            pdf.set_line_width(0.4)
+            pdf.line(margin, pdf.get_y(), page_w - margin, pdf.get_y())
+            pdf.ln(6)
+
+            # --- Identitas kendaraan (2 kolom) ---
+            pdf.set_font('Arial', '', 11)
+            col_w = content_w / 2
+            pdf.cell(col_w, 7, text=f"Tanggal          : {print_datetime}")
+            pdf.cell(col_w, 7, text=f"No Reg Kendaraan : {dt_no_pol}", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(col_w, 7, text=f"No Antrian       : {dt_no_antri}")
+            pdf.cell(col_w, 7, text=f"No Uji           : {dt_no_uji}", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(col_w, 7, text=f"Nama             : {dt_nama}")
+            pdf.cell(col_w, 7, text=f"JBB              : {dt_jbb} kg", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(col_w, 7, text=f"Berat Kosong     : {float(dt_brt_ksg)} kg", new_x="LMARGIN", new_y="NEXT")
+            # baris lentur - kalau jenis kendaraan panjang, teks turun ke baris berikutnya
+            pdf.multi_cell(content_w, 7, text=f"Jenis Kendaraan  : {dt_jns_kend}", align='L', new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(4)
+            pdf.set_draw_color(120, 120, 120)
+            pdf.line(margin, pdf.get_y(), page_w - margin, pdf.get_y())
+            pdf.ln(8)
+
+            # --- Hasil pengujian ---
+            pdf.set_font('Arial', 'B', 15)
+            pdf.cell(0, 8, text="SIDESLIP METER", align='C', new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font('Arial', '', 12)
+            pdf.cell(0, 7, text=f"Nilai Pengujian : {float(dt_sideslip_value)} mm", align='C', new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(4)
+
+            if int(dt_sideslip_flag) == 1:
+                status_text, fill_rgb, text_rgb = "LULUS", (211, 240, 216), (30, 120, 40)
+            elif int(dt_sideslip_flag) == 0:
+                status_text, fill_rgb, text_rgb = "TIDAK LULUS", (248, 210, 210), (170, 30, 30)
+            else:
+                status_text, fill_rgb, text_rgb = "BELUM DIUJI", (230, 230, 230), (90, 90, 90)
+
+            box_w = 90.0
+            pdf.set_x((page_w - box_w) / 2)
+            pdf.set_draw_color(*text_rgb)
+            pdf.set_fill_color(*fill_rgb)
+            pdf.set_text_color(*text_rgb)
+            pdf.set_font('Arial', 'B', 22)
+            pdf.cell(box_w, 16, text=status_text, align='C', border=1, fill=True)
+            pdf.set_text_color(0, 0, 0)
+            pdf.ln(24)
+
+            pdf.set_font('Arial', 'I', 8)
+            pdf.set_text_color(130, 130, 130)
+            pdf.cell(0, 5, text="Dicetak otomatis oleh sistem VIIMS", align='C')
+            pdf.set_text_color(0, 0, 0)
 
             documents_dir = os.path.join(os.environ["USERPROFILE"], "Documents")
 

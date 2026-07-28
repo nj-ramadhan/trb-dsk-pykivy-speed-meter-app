@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "VIIMS - Speedo Meter & Sideslip Tester Application - Pandeglang"
-#define MyAppVersion "2.3.260717"
+#define MyAppVersion "2.4.260728"
 #define MyAppPublisher "PT. Tiga Ratu Berkarya"
 #define MyAppExeName "TRB-VIIMS-SpeedSideslipMeterApp-Pandeglang.exe"
 #define MyAppAssocName "VIIMS - Speedo Meter & Sideslip Tester Application Pandeglang Files"
